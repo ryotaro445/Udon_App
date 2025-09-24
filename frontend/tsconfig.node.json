@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "types": ["node", "vitest"]   // ← ここにも vitest を追加（vitest.config.ts を型解決）
+  },
+  "include": ["vite.config.mts", "vitest.config.ts"]
+}

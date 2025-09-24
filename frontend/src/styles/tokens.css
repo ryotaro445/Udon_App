@@ -1,0 +1,61 @@
+:root {
+  /* 12/16px 基準: デスクトップ=12px、モバイル=16px */
+  --base: 12px;
+  --radius: 12px;
+
+  /* spacing scale (unit = base) */
+  --space-1: calc(var(--base) * 0.5); /* 6 / 8 */
+  --space-2: var(--base);              /* 12 / 16 */
+  --space-3: calc(var(--base) * 1.5); /* 18 / 24 */
+  --space-4: calc(var(--base) * 2);   /* 24 / 32 */
+  --space-5: calc(var(--base) * 3);   /* 36 / 48 */
+
+  /* colors */
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+
+  --primary: #2563eb;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger:  #dc2626;
+
+  /* effects */
+  --shadow-1: 0 1px 2px rgba(0,0,0,.05), 0 4px 10px rgba(0,0,0,.04);
+  --shadow-2: 0 10px 24px rgba(0,0,0,.08);
+
+  /* layout */
+  --container-max: 980px;
+  --z-toast: 9999;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --base: 16px;
+    --radius: 16px;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* helpers */
+.container { max-width: var(--container-max); margin: 0 auto; padding: 0 var(--space-2); }
+.stack > * + * { margin-top: var(--space-2); }
+.row { display: flex; gap: var(--space-2); align-items: center; }
+.grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}

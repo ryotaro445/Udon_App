@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "udon-backend"         # 任意名。インポート名は app のまま
+version = "0.1.0"
+description = "Udon App backend"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]            # backend/app をパッケージとして拾う

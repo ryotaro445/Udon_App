@@ -1,0 +1,83 @@
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+.card__header, .card__footer { padding: var(--space-3); }
+.card__body { padding: var(--space-3); }
+.card__title { font-weight: 700; font-size: 1.1rem; }
+.card__subtitle { color: var(--muted); font-size: .9rem; margin-top: .25em; }
+
+/* Button */
+.btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  padding: calc(var(--space-1) + 2px) var(--space-3);
+  border-radius: calc(var(--radius) * 0.5);
+  cursor: pointer;
+  box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  transition: box-shadow .15s ease, transform .02s ease, background .15s ease, border-color .15s ease;
+}
+.btn:hover { background: #fafafa; }
+.btn:active { transform: translateY(1px); }
+
+.btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.btn--primary:hover { filter: brightness(0.98); }
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+.btn--danger {
+  background: var(--danger); border-color: var(--danger); color: #fff;
+}
+
+/* Toasts */
+.toast-viewport {
+  position: fixed;
+  inset: var(--space-3) var(--space-3) auto auto; /* top-right */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  z-index: var(--z-toast);
+  width: min(380px, calc(100% - var(--space-3)*2));
+}
+
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: calc(var(--radius) * 0.75);
+  box-shadow: var(--shadow-2);
+  padding: var(--space-2) var(--space-3);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+  animation: toast-in .18s ease-out both;
+}
+.toast--success { border-left-color: var(--success); }
+.toast--warning { border-left-color: var(--warning); }
+.toast--danger  { border-left-color: var(--danger); }
+.toast__title { font-weight: 700; }
+.toast__desc { color: var(--muted); margin-top: .25em; font-size: .95rem; }
+.toast__close {
+  border: none; background: transparent; cursor: pointer; color: var(--muted); font-size: 1.1rem; padding: 0 .25rem;
+}
+.toast__close:hover { color: var(--text); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes toast-out {
+  to { opacity: 0; transform: translateY(-6px); }
+}
+.toast--leaving { animation: toast-out .18s ease-in forwards; }
