@@ -1,10 +1,9 @@
-// frontend/src/pages/ProtectedRoute.tsx
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useMode } from "../context/ModeCtx";
 
 const isE2E = import.meta.env.VITE_E2E === "1";
 
-// 表記ゆれ・保存先ゆれを吸収
+// 正規化関数
 function normalizeRole(input?: string | null): "customer" | "staff" | null {
   const v = (input ?? "").toString().trim().toLowerCase();
   if (v === "customer") return "customer";
@@ -12,6 +11,7 @@ function normalizeRole(input?: string | null): "customer" | "staff" | null {
   return null;
 }
 
+// fallback で localStorage / cookie を参照
 function readRoleFallback(): "customer" | "staff" | null {
   const keys = ["role", "mode", "app_mode", "udon.mode"];
   for (const k of keys) {
@@ -21,7 +21,6 @@ function readRoleFallback(): "customer" | "staff" | null {
       if (n) return n;
     } catch {}
   }
-  // cookie に置いている場合
   const m = (document.cookie || "").match(/(?:^|;\s*)mode=([^;]+)/);
   if (m) return normalizeRole(m[1]);
   return null;
@@ -30,30 +29,34 @@ function readRoleFallback(): "customer" | "staff" | null {
 export default function ProtectedRoute({
   allow,
 }: { allow: ("customer" | "staff")[] }) {
-  const { role } = useMode();           // Context（非同期初期化の可能性あり）
+  const { mode } = useMode();     // ← role → mode に統一
   const loc = useLocation();
 
-  // 1) まず context → だめなら storage/cookie から補完
-  const roleNorm = normalizeRole(role) ?? readRoleFallback();
+  const roleNorm = normalizeRole(mode) ?? readRoleFallback();
 
-  // 2) E2E は緩和（デモ安定化）
+  // E2E の場合はゆるめ
   if (isE2E) {
-    if (!roleNorm) {
-      // E2E でも最低限 /mode へ誘導したいなら下を残す
-      return <Navigate to="/mode" replace state={{ from: loc }} />;
-    }
-    // 許可ロールでない場合の分岐
+    if (!roleNorm) return <Navigate to="/mode" replace state={{ from: loc }} />;
     if (!allow.includes(roleNorm)) {
-      return <Navigate to={roleNorm === "staff" ? "/menu-admin" : "/order"} replace />;
+      return (
+        <Navigate
+          to={roleNorm === "staff" ? "/menu-admin" : "/order"}
+          replace
+        />
+      );
     }
     return <Outlet />;
   }
 
-  // 3) 本番ガード：ロール未確定は /mode
+  // 本番用
   if (!roleNorm) return <Navigate to="/mode" replace state={{ from: loc }} />;
-
   if (!allow.includes(roleNorm)) {
-    return <Navigate to={roleNorm === "staff" ? "/menu-admin" : "/order"} replace />;
+    return (
+      <Navigate
+        to={roleNorm === "staff" ? "/menu-admin" : "/order"}
+        replace
+      />
+    );
   }
 
   return <Outlet />;

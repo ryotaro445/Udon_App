@@ -1,7 +1,6 @@
-// src/context/ModeCtx.tsx
 import { createContext, useContext, useState, ReactNode } from "react";
 
-export type Mode = "CUSTOMER" | "STAFF" | "NONE";
+export type Mode = "customer" | "staff" | "NONE";
 
 type ModeContextValue = {
   mode: Mode;
@@ -11,8 +10,10 @@ type ModeContextValue = {
 const Ctx = createContext<ModeContextValue | null>(null);
 
 export function ModeProvider({ children }: { children: ReactNode }) {
+  // ← ここで useState を使って状態を管理
   const [mode, setMode] = useState<Mode>("NONE");
-  const value = { mode, setMode }; // ★オブジェクトで渡す
+
+  const value: ModeContextValue = { mode, setMode };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
