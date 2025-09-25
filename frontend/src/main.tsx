@@ -9,6 +9,9 @@ import { ToastProvider } from "./components/ui/ToastProvider";
 import "./styles/tokens.css";
 import "./styles/components.css";
 import { attachTestHook } from "./testHook";
+import "./index.css";
+
+
 
 // --- E2Eブートストラップ（?e2e=1 で mode/table を自動注入）---
 (function bootstrapE2E() {
@@ -16,7 +19,7 @@ import { attachTestHook } from "./testHook";
     const sp = new URLSearchParams(window.location.search);
     const isFlag = sp.get("e2e") === "1" || (import.meta as any)?.env?.VITE_E2E === "1";
     if (isFlag) {
-      localStorage.setItem("mode", "CUSTOMER");
+      localStorage.setItem("mode", "customer");
       const tableFromUrl = sp.get("table");
       if (!localStorage.getItem("table")) {
         localStorage.setItem("table", tableFromUrl ?? "12");
