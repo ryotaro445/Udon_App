@@ -1,38 +1,17 @@
+# backend/app/main.py
 from fastapi import FastAPI
-from app.routers import menus, orders, analytics, comments
-from .routers import test_reset as test_reset_router
 from fastapi.middleware.cors import CORSMiddleware
+
+# ルーターをまとめて import
+from .routers import menus, orders, comments, likes, analytics
 
 app = FastAPI()
 
-# /menus 系
-app.include_router(menus.router, tags=["menus"])
-# /api/menus 系
-app.include_router(menus.api_router, tags=["menus"])
-
-# /orders 系
-app.include_router(orders.router, tags=["orders"])
-# /api/orders
-app.include_router(orders.api_router, tags=["orders"])
-
-# /api/comments（board moderation 用）
-app.include_router(comments.router, tags=["comments"])
-
-# /api/analytics
-app.include_router(analytics.router, tags=["analytics"])
-
-# /app/routers/test_reset_router
-app.include_router(test_reset_router.router)
-
-
-
-
+# ✅ CORS をここで一度だけ設定
 origins = [
-    "http://localhost:5173",
-    "https://*.vercel.app",
+    "http://localhost:5173",            # ローカル開発用
+    "https://udon-app.vercel.app",      # 本番フロント
 ]
-
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,6 +21,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/healthz")
-def healthz():
-    return {"ok": True}
+# ✅ ルーターを直接 include_router（prefix で /api をつける）
+app.include_router(menus.router, prefix="/api")
+app.include_router(orders.router, prefix="/api")
+app.include_router(comments.router, prefix="/api")
+app.include_router(likes.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
+
+@app.get("/")
+def root():
+    return {"status": "ok"}
