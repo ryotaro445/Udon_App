@@ -1,33 +1,27 @@
-# backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# ルーターをまとめて import
-from .routers import menus, orders, comments, likes, analytics
+# ルーターをインポート
+from app.routers import menus, orders, analytics, comments
 
 app = FastAPI()
 
-# ✅ CORS をここで一度だけ設定
+# --- CORS設定 ---
 origins = [
-    "http://localhost:5173",            # ローカル開発用
-    "https://udon-app.vercel.app",      # 本番フロント
+    "http://localhost:5173",
+    "https://udon-app.vercel.app",   # ← Vercel フロントの本番URL
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins,  # 本番はこのドメインだけ
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ ルーターを直接 include_router（prefix で /api をつける）
-app.include_router(menus.router, prefix="/api")
-app.include_router(orders.router, prefix="/api")
-app.include_router(comments.router, prefix="/api")
-app.include_router(likes.router, prefix="/api")
-app.include_router(analytics.router, prefix="/api")
-
-@app.get("/")
-def root():
-    return {"status": "ok"}
+# --- include_routerでまとめる ---
+app.include_router(menus.router, tags=["menus"])
+app.include_router(orders.router, tags=["orders"])
+app.include_router(comments.router, tags=["comments"])
+app.include_router(analytics.router, tags=["analytics"])
