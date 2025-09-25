@@ -1,21 +1,25 @@
 {
+  "name": "udon-frontend",
+  "private": true,
+  "engines": { "node": ">=18" },
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
-    "dev:both": "concurrently -k -n BACK,FRONT \"cd ../backend && uvicorn app.main:app --host 127.0.0.1 --port 8000\" \"npm run dev\""
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^5.0.3",
-    "concurrently": "^9.2.1",
-    "vite": "^5.4.20"
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "d3-scale": "^4.0.2",
-    "d3-shape": "^3.2.0",
-    "d3-time": "^3.1.0",
-    "d3-time-format": "^4.1.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.1",
-    "recharts": "^3.2.1"
+    "recharts": "^3.2.1",
+    "d3-scale": "^4.0.2",
+    "d3-shape": "^3.2.0",
+    "d3-time": "^3.1.0",
+    "d3-time-format": "^4.1.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.20",
+    "@vitejs/plugin-react": "^5.0.3",
+    "concurrently": "^9.2.1"
   }
 }
