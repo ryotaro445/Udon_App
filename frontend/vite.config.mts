@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'), // "@/..." を "frontend/src" に解決
+      '@': path.resolve(__dirname, './src'),
     },
   },
   server: {
