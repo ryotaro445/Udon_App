@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# あるものだけ import（無いものは消す）
-from app.routers import menus, orders, comments, posts, analytics
+# ★ それぞれ “実際に使われている” ルーターの名前で import する
+from app.routers.menus import api_router as menus_router       # 例: api_router だった場合
+from app.routers.orders import router as orders_router         # 例: router だった場合
+from app.routers.comments import router as comments_router
+from app.routers.posts import router as posts_router           # 無ければ削除
+from app.routers.analytics import router as analytics_router
 
 app = FastAPI()
 
@@ -14,12 +18,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ★ 全ルーターを /api で公開
-app.include_router(menus.router,     prefix="/api", tags=["menus"])
-app.include_router(orders.router,    prefix="/api", tags=["orders"])
-app.include_router(comments.router,  prefix="/api", tags=["comments"])
-app.include_router(posts.router,     prefix="/api", tags=["posts"])        # 掲示板が無ければ削除
-app.include_router(analytics.router, prefix="/api", tags=["analytics"])
+# ★ /api に統一
+app.include_router(menus_router,     prefix="/api", tags=["menus"])
+app.include_router(orders_router,    prefix="/api", tags=["orders"])
+app.include_router(comments_router,  prefix="/api", tags=["comments"])
+app.include_router(posts_router,     prefix="/api", tags=["posts"])        # 無ければ削除
+app.include_router(analytics_router, prefix="/api", tags=["analytics"])
 
 @app.get("/")
 def root():
