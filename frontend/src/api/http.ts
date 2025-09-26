@@ -1,8 +1,21 @@
 const BASE = import.meta.env.VITE_API_BASE?.replace(/\/+$/, "") ?? "";
 
+function staffHeader() {
+  try {
+    const t = localStorage.getItem("staffToken");
+    return t ? { "X-Staff-Token": t } : {};
+  } catch {
+    return {};
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...staffHeader(),                 // ★ 追加
+      ...(init?.headers || {}),
+    },
     ...init,
   });
   if (!res.ok) {
@@ -13,11 +26,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const http = {
-  get: <T>(path: string) => request<T>(path),
+  get:  <T>(path: string) => request<T>(path),
   post: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
-  patch: <T>(path: string, body: unknown) =>
+  patch:<T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
-  del:  <T>(path: string) =>
-    request<T>(path, { method: "DELETE" }),
+  del:  <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
