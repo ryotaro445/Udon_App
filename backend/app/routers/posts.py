@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from itertools import count
 
-router = APIRouter()  # ← prefixは付けない（/apiはmain側で付与）
+router = APIRouter()  # ※ prefixは付けない。/api は main 側で付く
 
 class PostIn(BaseModel):
     title: str
@@ -16,7 +16,6 @@ class PostIn(BaseModel):
 class Post(PostIn):
     id: int
 
-# 超シンプルなインメモリ実装（Render再起動で消えます）
 _posts: List[Post] = []
 _seq = count(1)
 
@@ -25,7 +24,6 @@ def list_posts(limit: int = Query(50, ge=1, le=200), category: Optional[str] = N
     items = _posts
     if category:
         items = [p for p in items if p.category == category]
-    # pinned優先でソート → id降順
     items = sorted(items, key=lambda p: (not p.pinned, -p.id))
     return items[:limit]
 
@@ -37,8 +35,8 @@ def create_post(payload: PostIn):
 
 @router.delete("/posts/{post_id}", status_code=204, tags=["posts"])
 def delete_post(post_id: int):
-    idx = next((i for i, p in enumerate(_posts) if p.id == post_id), None)
-    if idx is None:
-        raise HTTPException(status_code=404, detail="Not Found")
-    _posts.pop(idx)
-    return None
+    for i, p in enumerate(_posts):
+        if p.id == post_id:
+            _posts.pop(i)
+            return
+    raise HTTPException(status_code=404, detail="Not Found")
