@@ -14,37 +14,29 @@ logger = logging.getLogger(__name__)
 
 @router.post("/menus/{menu_id}/comments", status_code=201)
 def api_post_comment(menu_id: int, payload: Dict[str, Any], db: Session = Depends(get_db)):
-    if not db.get(Menu, menu_id):
-        raise HTTPException(status_code=404, detail="menu not found")
+  if not db.get(Menu, menu_id):
+    raise HTTPException(status_code=404, detail="menu not found")
 
-    text = (payload.get("text") or "").strip()
-    user = (payload.get("user") or "").strip() or None
+  text = (payload.get("text") or "").strip()
+  user = (payload.get("user") or "").strip() or None
+  if not text:
+    raise HTTPException(status_code=400, detail="empty text")
 
-    if not text:
-        raise HTTPException(status_code=400, detail="empty text")
+  # --- AI moderation ---
+  allowed, reason = get_moderation_client().check(text)
+  logger.debug("moderation result allowed=%s reason=%s text=%r", allowed, reason, text)
+  if not allowed:
+    raise HTTPException(status_code=400, detail=f"blocked by moderation: {reason}")
 
-    # --- moderation check (必須) ---
-    mod_client = get_moderation_client()
-    try:
-        allowed, reason = mod_client.check(text)
-    except Exception as e:
-        # ここで失敗したら明示的にブロック or fail_open の方針に従う
-        logger.exception("moderation call failed")
-        raise HTTPException(status_code=503, detail=f"moderation error: {e!s}")
-
-    logger.debug("moderation result allowed=%s reason=%s text=%r", allowed, reason, text)
-    if not allowed:
-        logger.info("comment blocked by moderation: reason=%s text=%r", reason, text)
-        raise HTTPException(status_code=400, detail=f"blocked by moderation: {reason}")
-
-    # 保存
-    c = Comment(menu_id=menu_id, user=user, text=text)
-    db.add(c); db.commit(); db.refresh(c)
-    return {"id": c.id, "menu_id": c.menu_id, "user": c.user, "text": c.text, "created_at": c.created_at.isoformat()}
+  c = Comment(menu_id=menu_id, user=user, text=text)
+  db.add(c); db.commit(); db.refresh(c)
+  return {"id": c.id, "menu_id": c.menu_id, "user": c.user, "text": c.text, "created_at": c.created_at.isoformat()}
 
 @router.get("/menus/{menu_id}/comments")
 def api_list_comments(menu_id: int, db: Session = Depends(get_db)):
-    if not db.get(Menu, menu_id):
-        raise HTTPException(status_code=404, detail="menu not found")
-    rows = db.execute(select(Comment).where(Comment.menu_id == menu_id).order_by(desc(Comment.id))).scalars().all()
-    return [{"id": c.id, "user": c.user, "text": c.text, "created_at": c.created_at.isoformat()} for c in rows]
+  if not db.get(Menu, menu_id):
+    raise HTTPException(status_code=404, detail="menu not found")
+  rows = db.execute(
+    select(Comment).where(Comment.menu_id == menu_id).order_by(desc(Comment.id))
+  ).scalars().all()
+  return [{"id": c.id, "user": c.user, "text": c.text, "created_at": c.created_at.isoformat()} for c in rows]
