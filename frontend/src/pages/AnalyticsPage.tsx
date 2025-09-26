@@ -4,7 +4,6 @@ import HourlySalesChart from "../components/HourlySalesChart";
 import { useNavigate } from "react-router-dom";
 import { useMode } from "../context/ModeCtx";
 
-
 export default function AnalyticsPage() {
   const { mode } = useMode();
   const navigate = useNavigate();
@@ -12,12 +11,17 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const load = async () => {
+  // staff 以外は入れない
+  useEffect(() => {
+    if (mode !== "staff" && mode !== "STAFF") navigate("/mode");
+  }, [mode, navigate]);
+
+  const load = async (days = 7) => {
     setLoading(true);
     setErr(null);
     try {
-      const buckets = await fetchHourly();
-      setData(buckets);
+      const res = await fetchHourly(days); // ★ 必ず数値を渡す
+      setData(res.buckets ?? []);
     } catch (e: any) {
       setErr(e.message ?? "failed to load");
     } finally {
@@ -25,11 +29,12 @@ export default function AnalyticsPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
-
   useEffect(() => {
-  if (mode !== "staff" && mode !== "STAFF") navigate("/mode");
-}, [mode, navigate]);
+    // staff のときだけ読み込み
+    if (mode === "staff" || mode === "STAFF") {
+      void load(7);
+    }
+  }, [mode]);
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -37,7 +42,7 @@ export default function AnalyticsPage() {
         <h1 className="text-2xl font-bold">Analytics</h1>
         <button
           className="px-3 py-2 rounded bg-gray-200"
-          onClick={load}
+          onClick={() => load(7)}
           disabled={loading}
         >
           再取得

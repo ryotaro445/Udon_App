@@ -23,9 +23,12 @@ export async function fetchSummary(range: "today" | "7d" | "30d"): Promise<Summa
 }
 
 export async function fetchTopMenus(limit = 5, days = 30): Promise<TopMenu[]> {
-  return http.get<TopMenu[]>(`/api/analytics/top-menus?limit=${limit}&days=${days}`);
+  const d = Number.isFinite(days) ? days : 30;
+  return http.get<TopMenu[]>(`/api/analytics/top-menus?limit=${limit}&days=${d}`);
 }
 
-export async function fetchHourly(days: number): Promise<HourlySeriesOut> {
-  return http.get<HourlySeriesOut>(`/api/analytics/hourly?days=${days}`);
+// ★ days 未指定・未定義でも 7 を必ず送る
+export async function fetchHourly(days: number = 7): Promise<HourlySeriesOut> {
+  const d = Number.isFinite(days) ? days : 7;
+  return http.get<HourlySeriesOut>(`/api/analytics/hourly?days=${d}`);
 }
