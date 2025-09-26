@@ -1,49 +1,44 @@
-# app/routers/posts.py
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import select, desc
-from typing import List
-from app.routers.deps import get_db, require_staff
-from app.models import Post
-from app.schemas import PostCreate, PostOut
+# backend/app/routers/posts.py
+from fastapi import APIRouter, Query, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+from itertools import count
 
+router = APIRouter()  # ← prefixは付けない（/apiはmain側で付与）
 
-router = APIRouter(prefix="/posts", tags=["posts"])  # /api/posts
+class PostIn(BaseModel):
+    title: str
+    body: str
+    author: str
+    category: Optional[str] = None
+    pinned: Optional[bool] = False
 
+class Post(PostIn):
+    id: int
 
-@router.get("", response_model=List[PostOut])
-def list_posts(limit: int = 50, db: Session = Depends(get_db), category: str | None = None):
-    stmt = select(Post)
+# 超シンプルなインメモリ実装（Render再起動で消えます）
+_posts: List[Post] = []
+_seq = count(1)
+
+@router.get("/posts", response_model=List[Post], tags=["posts"])
+def list_posts(limit: int = Query(50, ge=1, le=200), category: Optional[str] = None):
+    items = _posts
     if category:
-        stmt = stmt.where(Post.category == category)
-    stmt = select(Post).order_by(desc(Post.created_at), desc(Post.id)).limit(min(200, max(1, limit)))
-    return list(db.execute(stmt).scalars())
+        items = [p for p in items if p.category == category]
+    # pinned優先でソート → id降順
+    items = sorted(items, key=lambda p: (not p.pinned, -p.id))
+    return items[:limit]
 
-
-
-@router.post("", response_model=PostOut, status_code=201, dependencies=[Depends(require_staff)])  
-def create_post(payload: PostCreate, db: Session = Depends(get_db)):
-    title = payload.title.strip()
-    body = payload.body.strip()
-    author = payload.author.strip()
-    if not title or not body or not author:
-        raise HTTPException(status_code=400, detail="empty fields")
-    p = Post(
-        title=title,
-        body=body,
-        author=author,
-        category=payload.category,   
-        pinned=payload.pinned or False,  
-    )
-    db.add(p); db.commit(); db.refresh(p)
+@router.post("/posts", response_model=Post, status_code=201, tags=["posts"])
+def create_post(payload: PostIn):
+    p = Post(id=next(_seq), **payload.model_dump())
+    _posts.append(p)
     return p
 
-
-
-@router.delete("/{post_id}", status_code=204)
-def delete_post(post_id: int, db: Session = Depends(get_db)):
-    p = db.get(Post, post_id)
-    if not p:
-        raise HTTPException(status_code=404, detail="post not found")
-    db.delete(p); db.commit()
+@router.delete("/posts/{post_id}", status_code=204, tags=["posts"])
+def delete_post(post_id: int):
+    idx = next((i for i, p in enumerate(_posts) if p.id == post_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="Not Found")
+    _posts.pop(idx)
     return None

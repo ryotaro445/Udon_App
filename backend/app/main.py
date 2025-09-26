@@ -45,10 +45,11 @@ def include_both(mod, tag: str):
     if r is None:
         print(f"[WARN] router not found for tag={tag}")
         return
-    # /xxx と /api/xxx の両方を公開（移行期間の安全策）
-    app.include_router(r, tags=[tag])                 # 例: /menus
-    app.include_router(r, prefix="/api", tags=[tag])  # 例: /api/menus
-
+    app.include_router(r, tags=[tag])  # 素のパス（例: /menus, /posts）
+    # ルーター自身に /api で始まるprefixが既にあるなら重複回避
+    pref = getattr(r, "prefix", "") or ""
+    if not pref.startswith("/api"):
+        app.include_router(r, prefix="/api", tags=[tag])
 
 include_both(menus, "menus")
 include_both(orders, "orders")
