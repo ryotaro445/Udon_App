@@ -3,18 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # ルーターを“モジュール”として読み、変数名 router / api_router のどちらでも拾う
-import app.routers.menus as menus
-import app.routers.orders as orders
-import app.routers.comments as comments
-try:
-    import app.routers.posts as posts
-except Exception:
-    posts = None
-try:
-    import app.routers.analytics as analytics
-except Exception:
-    analytics = None
-
+from app.routers import menus, orders, comments, posts, analytics
+  
 
 def pick_router(mod):
     """module から APIRouter を取り出す（api_router 優先）"""
@@ -50,6 +40,8 @@ def include_both(mod, tag: str):
     pref = getattr(r, "prefix", "") or ""
     if not pref.startswith("/api"):
         app.include_router(r, prefix="/api", tags=[tag])
+
+
 
 include_both(menus, "menus")
 include_both(orders, "orders")
