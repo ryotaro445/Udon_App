@@ -1,4 +1,3 @@
-// src/pages/BoardPage.tsx
 import { useEffect, useState } from "react";
 import { fetchPosts, createPost, deletePost, type Post } from "../api/posts";
 
@@ -12,12 +11,13 @@ export default function BoardPage() {
   const load = async () => {
     setErr(null);
     try {
-      const list = await fetchPosts(50);
+      const list = await fetchPosts(50);   // ← GET も API_BASE 経由
       setPosts(list);
     } catch (e: any) {
       setErr(e?.message ?? "読み込みに失敗しました");
     }
   };
+
   useEffect(() => { load(); }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -25,7 +25,7 @@ export default function BoardPage() {
     setLoading(true);
     setErr(null);
     try {
-      await createPost({ title, body, author: "guest" });
+      await createPost({ title, body, author: "guest" }); // ← ✅ ここを必ず API_BASE 経由に
       setTitle(""); setBody("");
       await load();
     } catch (e: any) {
@@ -39,10 +39,10 @@ export default function BoardPage() {
     const keep = posts;
     setPosts(p => p.filter(x => x.id !== id)); // 楽観的更新
     try {
-      await deletePost(id);
+      await deletePost(id);                    // ← DELETE も API_BASE 経由
     } catch {
       setErr("削除に失敗");
-      setPosts(keep); // ロールバック
+      setPosts(keep);                          // ロールバック
     }
   };
 
@@ -53,7 +53,7 @@ export default function BoardPage() {
 
       <form onSubmit={onSubmit} className="space-y-2">
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="タイトル" className="border px-2 py-1 rounded w-full" />
-        <textarea value={body}  onChange={e=>setBody(e.target.value)}  placeholder="本文"     className="border px-2 py-1 rounded w-full min-h-[120px]" />
+        <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="本文" className="border px-2 py-1 rounded w-full min-h-[120px]" />
         <button disabled={loading} className="px-3 py-1 rounded bg-black text-white disabled:opacity-50">投稿</button>
       </form>
 
@@ -64,12 +64,7 @@ export default function BoardPage() {
               <div className="font-semibold">{p.title}</div>
               <div className="text-sm text-slate-600 whitespace-pre-wrap">{p.body}</div>
             </div>
-            <button
-              onClick={() => onDelete(p.id)}
-              className="px-3 py-1 rounded border text-red-600 border-red-300 hover:bg-red-50"
-              aria-label={`投稿 ${p.id} を削除`}
-              data-testid={`btn-delete-${p.id}`}
-            >
+            <button onClick={() => onDelete(p.id)} className="px-3 py-1 rounded border text-red-600 border-red-300 hover:bg-red-50">
               削除
             </button>
           </li>
