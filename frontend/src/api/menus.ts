@@ -1,15 +1,15 @@
 // frontend/src/api/menus.ts
-import { getJSON, BASE, apiPost, apiDelete, apiPatch, apiPut } from "./client";
-export type { Menu } from "../components/MenuCard"; // ← MenuAdminPage が type Menu をここから import している想定
+import { apiGet, apiPost, apiDelete, apiPatch, apiPut } from "./client";
+export type { Menu } from "../components/MenuCard"; // 既存の型参照はそのまま
 
 // /menus と /api/menus の両対応（まず /menus を試し、ダメなら /api/menus）
 async function tryGetMenus(path: "/menus" | "/api/menus") {
-  const data = await getJSON<unknown>(`${BASE}${path}`);
+  // サーバーは配列を返す想定（スキーマ揺れ対策は不要なら削除可）
+  const data = await apiGet<unknown>(path);
   if (Array.isArray(data)) return data as any[];
   if (data && typeof data === "object" && Array.isArray((data as any).items)) {
     return (data as any).items as any[];
   }
-  console.error("Unexpected menus shape:", data);
   throw new Error("unexpected menus response");
 }
 
@@ -22,7 +22,6 @@ export async function fetchMenus() {
 }
 
 // ---- Admin 用 API ----
-// create: POST /menus もしくは /api/menus
 export async function createMenu(payload: any) {
   try {
     return await apiPost<any>("/menus", payload);
@@ -31,9 +30,8 @@ export async function createMenu(payload: any) {
   }
 }
 
-// delete: DELETE /menus/:id もしくは /api/menus/:id
 export async function deleteMenu(id: number | string) {
-  const p = typeof id === "number" ? String(id) : id;
+  const p = String(id);
   try {
     return await apiDelete<void>(`/menus/${p}`);
   } catch {
@@ -41,12 +39,21 @@ export async function deleteMenu(id: number | string) {
   }
 }
 
-// （必要なら）更新系も用意しておくと便利
 export async function updateMenu(id: number | string, payload: any) {
-  const p = typeof id === "number" ? String(id) : id;
+  const p = String(id);
   try {
     return await apiPatch<any>(`/menus/${p}`, payload);
   } catch {
     return await apiPatch<any>(`/api/menus/${p}`, payload);
+  }
+}
+
+// 必要があれば PUT 版も：
+export async function replaceMenu(id: number | string, payload: any) {
+  const p = String(id);
+  try {
+    return await apiPut<any>(`/menus/${p}`, payload);
+  } catch {
+    return await apiPut<any>(`/api/menus/${p}`, payload);
   }
 }
