@@ -1,62 +1,28 @@
 // src/api/client.ts
-// すべてのHTTPメソッドで BASE を確実に付与する
 export const BASE = (import.meta.env.VITE_API_BASE ?? "http://localhost:8000").replace(/\/+$/, "");
-
-function abs(url: string) {
-  if (/^https?:\/\//i.test(url)) return url;
-  return url.startsWith("/") ? `${BASE}${url}` : `${BASE}/${url}`;
-}
 
 type HeadersMap = Record<string, string>;
 
-export async function getJSON<T = unknown>(url: string, headers?: HeadersMap) {
-  const res = await fetch(abs(url), { credentials: "omit", headers });
+async function request<T>(method: "GET"|"POST"|"DELETE"|"PATCH"|"PUT", path: string, body?: unknown, headers?: HeadersMap) {
+  if (!path.startsWith("/")) throw new Error("path must start with '/'");
+  const url = `${BASE}${path}`;
+  const res = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json", ...(headers ?? {}) },
+    body: method === "GET" || method === "DELETE" ? undefined : JSON.stringify(body ?? {}),
+  });
   const text = await res.text();
-  const ctype = res.headers.get("Content-Type") || "";
+  const ctype = res.headers.get("Content-Type") ?? "";
   const data = ctype.includes("application/json") ? (text ? JSON.parse(text) : null) : text;
-  if (!res.ok) {
-    console.error("API error", res.status, data);
-    throw new Error(`API ${res.status}`);
-  }
+  if (!res.ok) throw new Error((data as any)?.detail ?? `HTTP ${res.status}`);
   return data as T;
 }
 
-export async function apiPost<T>(url: string, body: any, extraHeaders?: HeadersMap) {
-  const res = await fetch(abs(url), {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(extraHeaders ?? {}) },
-    body: JSON.stringify(body ?? {}),
-  });
-  if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-  const ctype = res.headers.get("Content-Type") || "";
-  return (ctype.includes("application/json") ? await res.json() : await res.text()) as T;
-}
+export const apiGet    = <T>(path: string, headers?: HeadersMap) => request<T>("GET",    path, undefined, headers);
+export const apiPost   = <T>(path: string, body?: unknown, headers?: HeadersMap) => request<T>("POST",   path, body, headers);
+export const apiDelete = <T>(path: string, headers?: HeadersMap) => request<T>("DELETE", path, undefined, headers);
+export const apiPatch  = <T>(path: string, body?: unknown, headers?: HeadersMap) => request<T>("PATCH",  path, body, headers);
+export const apiPut    = <T>(path: string, body?: unknown, headers?: HeadersMap) => request<T>("PUT",    path, body, headers);
 
-export async function apiDelete<T>(url: string, extraHeaders?: HeadersMap) {
-  const res = await fetch(abs(url), { method: "DELETE", headers: { ...(extraHeaders ?? {}) } });
-  if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-  // DELETE 204 の場合もあるのでとりあえず undefined を返す
-  return undefined as T;
-}
-
-export async function apiPatch<T>(url: string, body?: any, extraHeaders?: HeadersMap) {
-  const res = await fetch(abs(url), {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", ...(extraHeaders ?? {}) },
-    body: JSON.stringify(body ?? {}),
-  });
-  if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-  const ctype = res.headers.get("Content-Type") || "";
-  return (ctype.includes("application/json") ? await res.json() : await res.text()) as T;
-}
-
-export async function apiPut<T>(url: string, body?: any, extraHeaders?: HeadersMap) {
-  const res = await fetch(abs(url), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", ...(extraHeaders ?? {}) },
-    body: JSON.stringify(body ?? {}),
-  });
-  if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-  const ctype = res.headers.get("Content-Type") || "";
-  return (ctype.includes("application/json") ? await res.json() : await res.text()) as T;
-}
+// デバッグ表示（1回だけ）
+if (typeof window !== "undefined") console.log("API_BASE =", BASE);

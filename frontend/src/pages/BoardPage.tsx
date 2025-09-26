@@ -18,7 +18,6 @@ export default function BoardPage() {
       setErr(e?.message ?? "読み込みに失敗しました");
     }
   };
-
   useEffect(() => { load(); }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -27,8 +26,7 @@ export default function BoardPage() {
     setErr(null);
     try {
       await createPost({ title, body, author: "guest" });
-      setTitle("");
-      setBody("");
+      setTitle(""); setBody("");
       await load();
     } catch (e: any) {
       setErr(e?.message ?? "投稿に失敗");
@@ -37,15 +35,14 @@ export default function BoardPage() {
     }
   };
 
-  // ★ 追加：削除処理（楽観的更新）
   const onDelete = async (id: number) => {
     const keep = posts;
-    setPosts((p) => p.filter((x) => x.id !== id)); // 先に消す
+    setPosts(p => p.filter(x => x.id !== id)); // 楽観的更新
     try {
       await deletePost(id);
-    } catch (e) {
+    } catch {
       setErr("削除に失敗");
-      setPosts(keep); // 失敗したら戻す
+      setPosts(keep); // ロールバック
     }
   };
 
@@ -55,37 +52,18 @@ export default function BoardPage() {
       {err && <div className="text-red-600">{err}</div>}
 
       <form onSubmit={onSubmit} className="space-y-2">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="タイトル"
-          className="border px-2 py-1 rounded w-full"
-        />
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="本文"
-          className="border px-2 py-1 rounded w-full min-h-[120px]"
-        />
-        <button
-          disabled={loading}
-          className="px-3 py-1 rounded bg-black text-white disabled:opacity-50"
-        >
-          投稿
-        </button>
+        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="タイトル" className="border px-2 py-1 rounded w-full" />
+        <textarea value={body}  onChange={e=>setBody(e.target.value)}  placeholder="本文"     className="border px-2 py-1 rounded w-full min-h-[120px]" />
+        <button disabled={loading} className="px-3 py-1 rounded bg-black text-white disabled:opacity-50">投稿</button>
       </form>
 
       <ul className="divide-y">
-        {posts.map((p) => (
+        {posts.map(p => (
           <li key={p.id} className="py-3 flex items-start justify-between gap-4">
             <div>
               <div className="font-semibold">{p.title}</div>
-              <div className="text-sm text-slate-600 whitespace-pre-wrap">
-                {p.body}
-              </div>
+              <div className="text-sm text-slate-600 whitespace-pre-wrap">{p.body}</div>
             </div>
-
-            {/* ★ 追加：削除ボタン */}
             <button
               onClick={() => onDelete(p.id)}
               className="px-3 py-1 rounded border text-red-600 border-red-300 hover:bg-red-50"
@@ -96,9 +74,7 @@ export default function BoardPage() {
             </button>
           </li>
         ))}
-        {posts.length === 0 && (
-          <li className="text-slate-500">投稿がありません</li>
-        )}
+        {posts.length === 0 && <li className="text-slate-500">投稿がありません</li>}
       </ul>
     </main>
   );
