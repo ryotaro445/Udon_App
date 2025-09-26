@@ -8,14 +8,39 @@ export type Comment = {
   created_at?: string;
 };
 
+/** モデレーション系のエラー文面をユーザー向けに整形 */
+function normalizeModerationError(raw: unknown): Error {
+  const msg = String((raw as any)?.message ?? raw ?? "");
+  // FastAPI 側の detail を抽出
+  const m = msg.match(/\{?"?detail"?\s*:\s*"([^"]+)"/);
+  const detail = m?.[1] ?? msg;
+
+  // backend/app/services/moderation.py の返しに合わせた分岐
+  if (/moderation disabled/i.test(detail)) {
+    return new Error("現在、モデレーション機能が無効のため投稿できません。（管理者に連絡してください）");
+  }
+  if (/blocked by moderation/i.test(detail) || /unsafe/i.test(detail) || /policy/i.test(detail)) {
+    return new Error("不適切な内容が含まれている可能性があります。表現を見直してください。");
+  }
+  if (/empty text/i.test(detail)) {
+    return new Error("コメントが空です。内容を入力してください。");
+  }
+  // それ以外は元のメッセージ
+  return new Error(detail || "コメントの送信に失敗しました。");
+}
+
 export function fetchComments(menuId: number) {
   return http.get<Comment[]>(`/api/menus/${menuId}/comments`);
 }
 
-export function createComment(
+export async function createComment(
   menuId: number,
   payload: { user?: string; text: string }
-) {
-  // Content-Type: application/json は http.ts 側で付与済み
-  return http.post<Comment>(`/api/menus/${menuId}/comments`, payload);
+): Promise<Comment> {
+  try {
+    return await http.post<Comment>(`/api/menus/${menuId}/comments`, payload);
+  } catch (e) {
+    // 400（blocked）、503（disabled）などをユーザー向けメッセージに変換
+    throw normalizeModerationError(e);
+  }
 }

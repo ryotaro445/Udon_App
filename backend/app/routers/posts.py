@@ -4,8 +4,10 @@ from pydantic import BaseModel
 from typing import List, Optional
 from itertools import count
 
-router = APIRouter()  # ※ prefixは付けない。/api は main 側で付く
+# ※ prefix は付けない（/api は main 側で付けてマウント）
+router = APIRouter()
 
+# ----- スキーマ -----
 class PostIn(BaseModel):
     title: str
     body: str
@@ -16,14 +18,17 @@ class PostIn(BaseModel):
 class Post(PostIn):
     id: int
 
+# ----- インメモリ保存（デモ用） -----
 _posts: List[Post] = []
 _seq = count(1)
 
+# ----- エンドポイント -----
 @router.get("/posts", response_model=List[Post], tags=["posts"])
 def list_posts(limit: int = Query(50, ge=1, le=200), category: Optional[str] = None):
     items = _posts
     if category:
         items = [p for p in items if p.category == category]
+    # pinned を先頭、その中で id 降順
     items = sorted(items, key=lambda p: (not p.pinned, -p.id))
     return items[:limit]
 

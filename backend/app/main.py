@@ -1,10 +1,11 @@
-# backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # ルーター
 from app.routers import menus as menus_router
 from app.routers import analytics as analytics_router
+from app.routers import posts as posts_router 
+from app.routers import comments as comments_router  
 
 app = FastAPI()
 
@@ -21,9 +22,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# /menus と /api/menus の両系統を公開
-app.include_router(menus_router.router)       # /menus/*
-app.include_router(menus_router.api_router)   # /api/menus/*
+# /menus と /api/menus
+app.include_router(menus_router.router)
+app.include_router(menus_router.api_router)
 
 # /api/analytics/*
 app.include_router(analytics_router.router)
+
+app.include_router(posts_router.router, prefix="/api")
+
+app.include_router(comments_router.router)
