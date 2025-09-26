@@ -2,16 +2,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# ★ 各ルーターを必ず import
+# ルーター
 from app.routers import menus as menus_router
-from app.routers import analytics as analytics_router  # ある場合
+from app.routers import analytics as analytics_router
 
 app = FastAPI()
 
-# ★ CORS：本番フロントとローカルを許可
+# CORS（必要に応じてドメインを追加）
 origins = [
     "http://localhost:5173",
-    "https://udon-app.vercel.app",  # ← Vercel の本番URLに合わせる
+    "https://udon-app.vercel.app",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -21,9 +21,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ★ ここが肝：/menus と /api/menus の“両方”をマウント
-app.include_router(menus_router.router)       # /menus 系（GET/POST/PATCH/DELETE）
-app.include_router(menus_router.api_router)   # /api/menus 系（GET/POST/PATCH/DELETE）
+# /menus と /api/menus の両系統を公開
+app.include_router(menus_router.router)       # /menus/*
+app.include_router(menus_router.api_router)   # /api/menus/*
 
-# ★ analytics を使っているなら必ずマウント
-app.include_router(analytics_router.router)   # /api/analytics/*
+# /api/analytics/*
+app.include_router(analytics_router.router)
