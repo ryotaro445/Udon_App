@@ -1,42 +1,32 @@
 # backend/app/routers/comments.py
+from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, desc
+from typing import Dict, Any
+
 from ..database import get_db
 from ..models import Menu, Comment
 from app.services.moderation import get_moderation_client
 
 router = APIRouter(prefix="/api", tags=["comments"])
 
-def moderate_text(text: str) -> dict:
-    """
-    本番用：OpenAI Moderation を呼び出す。
-    テストではここを monkeypatch すれば従来どおり動く。
-    戻り値は {allowed: bool, reason: str|None} 形式に統一。
-    """
-    ok, reason = get_moderation_client().check(text)
-    return {"allowed": ok, "reason": reason}
-
 @router.post("/menus/{menu_id}/comments", status_code=201)
-def api_post_comment(menu_id: int, payload: dict, db: Session = Depends(get_db)):
+def api_post_comment(menu_id: int, payload: Dict[str, Any], db: Session = Depends(get_db)):
     if not db.get(Menu, menu_id):
         raise HTTPException(status_code=404, detail="menu not found")
 
+    user = (payload.get("user") or "").strip() or None
     text = (payload.get("text") or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="empty text")
 
-    result = moderate_text(text)
-    if not result.get("allowed", False):
-        reason = result.get("reason") or "unsafe"
-        # services/moderation.py の文言に合わせる（フロントがパースする）
-        if "moderation disabled" in reason:
-            raise HTTPException(status_code=503, detail=reason)
-        if "moderation error" in reason:
-            raise HTTPException(status_code=502, detail=reason)
-        raise HTTPException(status_code=400, detail=f"blocked by moderation: {reason}")
+    # === AI モデレーション ===
+    ok, reason = get_moderation_client().check(text)
+    if not ok:
+        # 400で返却（フロントはこのメッセージを表示）
+        raise HTTPException(status_code=400, detail=reason or "blocked by moderation")
 
-    user = (payload.get("user") or "").strip() or None
     c = Comment(menu_id=menu_id, user=user, text=text)
     db.add(c)
     db.commit()
