@@ -1,82 +1,65 @@
 // frontend/src/api/client.ts
-// 本番: Vercel Env (VITE_API_BASE=https://udon-app.onrender.com)
-// ローカル: 未設定なら http://localhost:8000
+import { getStaffToken } from "../components/auth/RequireStaff";
+
+// 本番: VercelのEnv / ローカル: http://localhost:8000
 export const BASE = (import.meta.env.VITE_API_BASE ?? "http://localhost:8000").replace(/\/+$/, "");
 
-/** 汎用 GET（フルURLでもOK） */
+type HeadersMap = Record<string, string>;
+
+function toURL(url: string) {
+  // "http" で始まらない＝相対パスなら BASE を付与
+  return /^https?:\/\//i.test(url) ? url : `${BASE}${url.startsWith("/") ? url : `/${url}`}`;
+}
+
+// ---- GET は既に BASE を付けている実装があるなら残してOK ----
 export async function getJSON<T = unknown>(url: string) {
-  const res = await fetch(url, { credentials: "omit" });
+  const res = await fetch(toURL(url), { credentials: "omit" });
   const text = await res.text();
   const ctype = res.headers.get("Content-Type") || "";
-
-  let data: unknown = text;
-  if (ctype.includes("application/json")) {
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch (e) {
-      console.error("JSON parse error:", e, "raw:", text);
-      throw e;
-    }
-  }
-  if (!res.ok) {
-    console.error("API error", res.status, data);
-    throw new Error(`API ${res.status}`);
-  }
+  const data = ctype.includes("application/json") ? (text ? JSON.parse(text) : null) : text;
+  if (!res.ok) throw new Error(`API ${res.status}`);
   return data as T;
 }
 
-/** パスを BASE と結合（path は必ず '/' 始まり） */
-function full(path: string) {
-  if (!path.startsWith("/")) throw new Error("path must start with '/'");
-  return `${BASE}${path}`;
+// ---- ここが重要：POST/PUT/PATCH/DELETE でも toURL() を通す ----
+export async function apiPost<T>(url: string, body: any, extraHeaders?: HeadersMap) {
+  const token = getStaffToken();
+  const headers: HeadersMap = { "Content-Type": "application/json", ...(extraHeaders || {}) };
+  if (token) headers["X-Staff-Token"] = token;
+  const r = await fetch(toURL(url), { method: "POST", headers, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j as any).detail ?? "Request failed");
+  return j as T;
 }
 
-/** 互換ラッパー: posts.ts / likes.ts / orders.ts 等が使う想定 */
-export async function apiGet<T>(path: string) {
-  return getJSON<T>(full(path));
+export async function apiPatch<T>(url: string, body?: any, extraHeaders?: HeadersMap) {
+  const token = getStaffToken();
+  const headers: HeadersMap = { "Content-Type": "application/json", ...(extraHeaders || {}) };
+  if (token) headers["X-Staff-Token"] = token;
+  const r = await fetch(toURL(url), { method: "PATCH", headers, body: JSON.stringify(body ?? {}) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j as any).detail ?? "Request failed");
+  return j as T;
 }
 
-export async function apiPost<T>(path: string, body: any, extraHeaders?: Record<string, string>) {
-  const headers: Record<string, string> = { "Content-Type": "application/json", ...(extraHeaders || {}) };
-  const r = await fetch(full(path), { method: "POST", headers, body: JSON.stringify(body ?? {}) });
-  const text = await r.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!r.ok) throw new Error((data as any)?.detail ?? `HTTP ${r.status}`);
-  return data as T;
+export async function apiPut<T>(url: string, body?: any, extraHeaders?: HeadersMap) {
+  const token = getStaffToken();
+  const headers: HeadersMap = { "Content-Type": "application/json", ...(extraHeaders || {}) };
+  if (token) headers["X-Staff-Token"] = token;
+  const r = await fetch(toURL(url), { method: "PUT", headers, body: JSON.stringify(body ?? {}) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j as any).detail ?? "Request failed");
+  return j as T;
 }
 
-export async function apiDelete<T>(path: string, extraHeaders?: Record<string, string>) {
-  const headers: Record<string, string> = { ...(extraHeaders || {}) };
-  const r = await fetch(full(path), { method: "DELETE", headers });
+export async function apiDelete<T>(url: string, extraHeaders?: HeadersMap) {
+  const token = getStaffToken();
+  const headers: HeadersMap = { ...(extraHeaders || {}) };
+  if (token) headers["X-Staff-Token"] = token;
+  const r = await fetch(toURL(url), { method: "DELETE", headers });
   if (!r.ok) {
-    const text = await r.text();
-    const data = text ? JSON.parse(text) : null;
-    throw new Error((data as any)?.detail ?? `HTTP ${r.status}`);
+    const j = await r.json().catch(() => ({}));
+    throw new Error((j as any).detail ?? "Request failed");
   }
-  // DELETE は多くが 204 を返すので undefined を T にキャスト
   return undefined as T;
-}
-
-export async function apiPatch<T>(path: string, body?: any, extraHeaders?: Record<string, string>) {
-  const headers: Record<string, string> = { "Content-Type": "application/json", ...(extraHeaders || {}) };
-  const r = await fetch(full(path), { method: "PATCH", headers, body: JSON.stringify(body ?? {}) });
-  const text = await r.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!r.ok) throw new Error((data as any)?.detail ?? `HTTP ${r.status}`);
-  return data as T;
-}
-
-export async function apiPut<T>(path: string, body?: any, extraHeaders?: Record<string, string>) {
-  const headers: Record<string, string> = { "Content-Type": "application/json", ...(extraHeaders || {}) };
-  const r = await fetch(full(path), { method: "PUT", headers, body: JSON.stringify(body ?? {}) });
-  const text = await r.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!r.ok) throw new Error((data as any)?.detail ?? `HTTP ${r.status}`);
-  return data as T;
-}
-
-// デバッグ（本番でも一度だけ BASE を表示）
-if (typeof window !== "undefined") {
-  // eslint-disable-next-line no-console
-  console.log("API_BASE =", BASE);
 }
