@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, desc
 from ..database import get_db
 from ..models import Menu, Comment
-from app.services.moderation import get_moderation_client  # ← 追加
+from app.services.moderation import get_moderation_client
 import logging
 
 router = APIRouter(prefix="/api", tags=["comments"])
@@ -23,12 +23,18 @@ def api_post_comment(menu_id: int, payload: Dict[str, Any], db: Session = Depend
     if not text:
         raise HTTPException(status_code=400, detail="empty text")
 
-    # --- moderation check ---
+    # --- moderation check (必須) ---
     mod_client = get_moderation_client()
-    allowed, reason = mod_client.check(text)
+    try:
+        allowed, reason = mod_client.check(text)
+    except Exception as e:
+        # ここで失敗したら明示的にブロック or fail_open の方針に従う
+        logger.exception("moderation call failed")
+        raise HTTPException(status_code=503, detail=f"moderation error: {e!s}")
+
+    logger.debug("moderation result allowed=%s reason=%s text=%r", allowed, reason, text)
     if not allowed:
-        # ブロック：クライアントに分かりやすく 400 を返す（必要なら 403 等へ変更）
-        logger.info("comment blocked by moderation: menu=%s user=%s reason=%s", menu_id, user, reason)
+        logger.info("comment blocked by moderation: reason=%s text=%r", reason, text)
         raise HTTPException(status_code=400, detail=f"blocked by moderation: {reason}")
 
     # 保存
