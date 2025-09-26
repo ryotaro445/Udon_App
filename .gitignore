@@ -44,3 +44,4 @@ __pycache__/
 # macOS
 .DS_Store
 EOF
+.vscode/

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTable } from "../context/TableCtx";
 import TableBanner from "../components/TableBanner";
 import MenuCard, { type Menu, type MenuForCart } from "../components/MenuCard";
-import MenuDetail from "../components/MenuDetail";
+import MenuDetail from "../components/MenuDetail"; // 既存のコメント/詳細モーダルとして流用
 import Toast from "../components/Toast";
 import { fetchMenus } from "../api/menus";
 
@@ -25,8 +25,8 @@ export default function OrderPage() {
     }
   });
 
-  // 詳細モーダル（コメント用）
-  const [detailId, setDetailId] = useState<number | null>(null);
+  // コメントモーダル
+  const [commentId, setCommentId] = useState<number | null>(null);
 
   // ローディング／エラー／トースト
   const [loading, setLoading] = useState(true);
@@ -37,8 +37,8 @@ export default function OrderPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchMenus(); // /api/menus を叩く想定
-      setMenus(data);
+      const data = await fetchMenus(); // /menus or /api/menus フォールバック実装に依存
+      setMenus(data as Menu[]);
     } catch (e: any) {
       setError(e?.message ?? "メニュー取得に失敗しました。");
     } finally {
@@ -92,17 +92,15 @@ export default function OrderPage() {
     // 本来は POST /api/orders（table を含む）
     // await apiPost('/api/orders', { table, items: cart })
 
-    // --- E2E/デモ用：確実にトーストを出し、カートを空にする ---
+    // --- デモ用：確実にトーストを出し、カートを空にする ---
     setToast("注文を受け付けました");
     setCart([]);
     localStorage.setItem("cart", JSON.stringify([]));
-    // --------------------------------------------
   };
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
       {toast && (
-        // ★ テストが拾えるよう testid をここで付与
         <div data-testid="toast">
           <Toast message={toast} onClose={() => setToast(null)} />
         </div>
@@ -126,7 +124,7 @@ export default function OrderPage() {
             key={m.id}
             m={m}
             onAdd={onAdd}
-            onOpenDetail={(id) => setDetailId(id)}
+            onOpenComment={(id) => setCommentId(id)}  // ★ コメントを開く
           />
         ))}
       </div>
@@ -138,7 +136,6 @@ export default function OrderPage() {
         </div>
         <button
           data-testid="order-submit"
-          // ★ E2Eを確実に通す：カートが空でなければ押せる
           disabled={cart.length === 0}
           style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #aaa" }}
           onClick={submitOrder}
@@ -147,10 +144,11 @@ export default function OrderPage() {
         </button>
       </div>
 
-      {detailId !== null && (
+      {/* コメントモーダル（既存の MenuDetail を流用） */}
+      {commentId !== null && (
         <MenuDetail
-          menuId={detailId}
-          onClose={() => setDetailId(null)}
+          menuId={commentId}
+          onClose={() => setCommentId(null)}
         />
       )}
     </div>

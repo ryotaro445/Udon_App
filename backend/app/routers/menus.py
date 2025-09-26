@@ -19,18 +19,13 @@ def _order_clause(order: Optional[str]):
     return asc(Menu.id)
 
 def _to_int(v, default=0):
-    try:
-        return int(v)
-    except Exception:
-        return default
+    try: return int(v)
+    except Exception: return default
 
 def _bool_from_payload(payload: Dict[str, Any]) -> Optional[bool]:
-    # stock(数) → in_stock(bool) へのブリッジ
-    if "in_stock" in payload:
-        return bool(payload["in_stock"])
-    if "stock" in payload:
-        n = _to_int(payload["stock"], 0)
-        return n > 0
+    # stock(数) → in_stock(bool) へブリッジ
+    if "in_stock" in payload: return bool(payload["in_stock"])
+    if "stock" in payload: return _to_int(payload["stock"], 0) > 0
     return None
 
 def _model_dict(m: Menu) -> Dict[str, Any]:
@@ -43,7 +38,7 @@ def _model_dict(m: Menu) -> Dict[str, Any]:
         "image": getattr(m, "image", None),
     }
 
-# ---- list (GET) ----
+# ---------- GET ----------
 @router.get("/menus")
 def list_menus(limit: int = 100, offset: int = 0, order: Optional[str] = None, db: Session = Depends(get_db)):
     rows = db.execute(select(Menu).order_by(_order_clause(order)).limit(limit).offset(offset)).scalars().all()
@@ -54,7 +49,7 @@ def api_list_menus(db: Session = Depends(get_db)):
     rows = db.execute(select(Menu).order_by(asc(Menu.id))).scalars().all()
     return [_model_dict(m) for m in rows]
 
-# ---- create (POST) ----
+# ---------- POST ----------
 def _create_menu_common(payload: Dict[str, Any], db: Session) -> Dict[str, Any]:
     name = (payload.get("name") or "").strip()
     if not name:
@@ -82,7 +77,7 @@ def create_menu(payload: Dict[str, Any], db: Session = Depends(get_db)):
 def api_create_menu(payload: Dict[str, Any], db: Session = Depends(get_db)):
     return _create_menu_common(payload, db)
 
-# ---- update (PATCH) ----
+# ---------- PATCH ----------
 def _update_menu_common(menu_id: int, payload: Dict[str, Any], db: Session) -> Dict[str, Any]:
     m = db.get(Menu, menu_id)
     if not m:
@@ -114,7 +109,7 @@ def update_menu(menu_id: int, payload: Dict[str, Any], db: Session = Depends(get
 def api_update_menu(menu_id: int, payload: Dict[str, Any], db: Session = Depends(get_db)):
     return _update_menu_common(menu_id, payload, db)
 
-# ---- delete (DELETE) ----
+# ---------- DELETE ----------
 def _delete_menu_common(menu_id: int, db: Session) -> Dict[str, Any]:
     m = db.get(Menu, menu_id)
     if not m:
@@ -131,7 +126,7 @@ def delete_menu(menu_id: int, db: Session = Depends(get_db)):
 def api_delete_menu(menu_id: int, db: Session = Depends(get_db)):
     return _delete_menu_common(menu_id, db)
 
-# ---- likes ----
+# ---------- likes / comments（既存そのまま） ----------
 @router.post("/menus/{menu_id}/like")
 def like_menu(menu_id: int, db: Session = Depends(get_db), x_user_token: Optional[str] = Header(None, alias="X-User-Token")):
     if not db.get(Menu, menu_id):
@@ -149,23 +144,17 @@ def like_menu(menu_id: int, db: Session = Depends(get_db), x_user_token: Optiona
         db.commit()
         new = True
 
-    cnt = db.execute(
-        select(func.count()).select_from(MenuLike).where(MenuLike.menu_id == menu_id)
-    ).scalar_one()
+    cnt = db.execute(select(func.count()).select_from(MenuLike).where(MenuLike.menu_id == menu_id)).scalar_one()
     return {"new": new, "count": int(cnt)}
 
 @router.get("/menus/{menu_id}/likes")
 def get_likes(menu_id: int, db: Session = Depends(get_db)):
     if not db.get(Menu, menu_id):
         raise HTTPException(status_code=404, detail="menu not found")
-    cnt = db.execute(
-        select(func.count()).select_from(MenuLike).where(MenuLike.menu_id == menu_id)
-    ).scalar_one()
+    cnt = db.execute(select(func.count()).select_from(MenuLike).where(MenuLike.menu_id == menu_id)).scalar_one()
     return {"count": int(cnt)}
 
-# ---- comments (/menus) ----
-def _validate_comment(text: Optional[str]):
-    return bool(text and text.strip())
+def _validate_comment(text: Optional[str]): return bool(text and text.strip())
 
 @router.post("/menus/{menu_id}/comments", status_code=201)
 def post_comment(menu_id: int, payload: Dict[str, Any], db: Session = Depends(get_db)):
@@ -176,16 +165,12 @@ def post_comment(menu_id: int, payload: Dict[str, Any], db: Session = Depends(ge
     if not _validate_comment(text):
         raise HTTPException(status_code=400, detail="empty text")
     c = Comment(menu_id=menu_id, user=user, text=text.strip())
-    db.add(c)
-    db.commit()
-    db.refresh(c)
+    db.add(c); db.commit(); db.refresh(c)
     return {"id": c.id, "menu_id": c.menu_id, "user": c.user, "text": c.text, "created_at": c.created_at.isoformat()}
 
 @router.get("/menus/{menu_id}/comments")
 def list_comments(menu_id: int, db: Session = Depends(get_db)):
     if not db.get(Menu, menu_id):
         raise HTTPException(status_code=404, detail="menu not found")
-    rows = db.execute(
-        select(Comment).where(Comment.menu_id == menu_id).order_by(desc(Comment.id))
-    ).scalars().all()
+    rows = db.execute(select(Comment).where(Comment.menu_id == menu_id).order_by(desc(Comment.id))).scalars().all()
     return [{"id": c.id, "user": c.user, "text": c.text, "created_at": c.created_at.isoformat()} for c in rows]
