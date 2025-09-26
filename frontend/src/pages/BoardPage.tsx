@@ -1,145 +1,105 @@
-import React, { useEffect, useMemo, useState } from "react";
-
-type Post = {
-  id: string;
-  title: string;
-  body: string;
-  author: string;
-  createdAt: string;
-};
-
-const API_URL = (path: string) =>
-  new URL(path, window.location.origin).toString(); // ← 相対URLエラー対策
+// src/pages/BoardPage.tsx
+import { useEffect, useState } from "react";
+import { fetchPosts, createPost, deletePost, type Post } from "../api/posts";
 
 export default function BoardPage() {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [author, setAuthor] = useState("");
-  const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const disabled = useMemo(
-    () => !title.trim() || !body.trim() || !author.trim(),
-    [title, body, author]
-  );
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const load = async () => {
-    setLoading(true);
-    setFetchError(null);
+    setErr(null);
     try {
-      const res = await fetch(API_URL("/api/posts"));
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: Post[] = await res.json();
-      setPosts(data);
-    } catch {
-      setFetchError("Request failed"); // ← テストが拾える文言
-      setPosts([]);
+      const list = await fetchPosts(50);
+      setPosts(list);
+    } catch (e: any) {
+      setErr(e?.message ?? "読み込みに失敗しました");
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setErr(null);
+    try {
+      await createPost({ title, body, author: "guest" });
+      setTitle("");
+      setBody("");
+      await load();
+    } catch (e: any) {
+      setErr(e?.message ?? "投稿に失敗");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitError(null);
+  // ★ 追加：削除処理（楽観的更新）
+  const onDelete = async (id: number) => {
+    const keep = posts;
+    setPosts((p) => p.filter((x) => x.id !== id)); // 先に消す
     try {
-      const res = await fetch(API_URL("/api/posts"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, author }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setTitle("");
-      setBody("");
-      setAuthor("");
-      await load(); // 成功時のみ再取得
-    } catch {
-      setSubmitError("投稿に失敗"); // ← こちらもテストが拾える文言
+      await deletePost(id);
+    } catch (e) {
+      setErr("削除に失敗");
+      setPosts(keep); // 失敗したら戻す
     }
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: "40px auto", padding: 16 }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
-        店内掲示板（従業員向け）
-      </h2>
+    <main className="p-6 space-y-6">
+      <h1 className="text-xl font-bold">掲示板</h1>
+      {err && <div className="text-red-600">{err}</div>}
 
-      {fetchError && (
-        <div style={{ color: "rgb(176,0,32)", marginBottom: 8 }}>
-          {fetchError}
-        </div>
-      )}
+      <form onSubmit={onSubmit} className="space-y-2">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="タイトル"
+          className="border px-2 py-1 rounded w-full"
+        />
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="本文"
+          className="border px-2 py-1 rounded w-full min-h-[120px]"
+        />
+        <button
+          disabled={loading}
+          className="px-3 py-1 rounded bg-black text-white disabled:opacity-50"
+        >
+          投稿
+        </button>
+      </form>
 
-      <div
-        style={{
-          border: "1px solid #eee",
-          borderRadius: 12,
-          padding: 12,
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>新規投稿</div>
+      <ul className="divide-y">
+        {posts.map((p) => (
+          <li key={p.id} className="py-3 flex items-start justify-between gap-4">
+            <div>
+              <div className="font-semibold">{p.title}</div>
+              <div className="text-sm text-slate-600 whitespace-pre-wrap">
+                {p.body}
+              </div>
+            </div>
 
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 8 }}>
-          <input
-            placeholder="タイトル"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <textarea
-            placeholder="本文"
-            rows={4}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-          />
-          <input
-            placeholder="投稿者"
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-          />
-
-          {submitError && (
-            <div style={{ color: "rgb(176,0,32)" }}>{submitError}</div>
-          )}
-
-          <div>
-            <button type="submit" disabled={disabled || loading}>
-              投稿
+            {/* ★ 追加：削除ボタン */}
+            <button
+              onClick={() => onDelete(p.id)}
+              className="px-3 py-1 rounded border text-red-600 border-red-300 hover:bg-red-50"
+              aria-label={`投稿 ${p.id} を削除`}
+              data-testid={`btn-delete-${p.id}`}
+            >
+              削除
             </button>
-          </div>
-        </form>
-      </div>
-
-      <div style={{ border: "1px solid #eee", borderRadius: 12 }}>
-        {loading ? (
-          <div style={{ padding: 12 }}>読み込み中…</div>
-        ) : posts.length === 0 ? (
-          <div style={{ padding: 12 }}>投稿はまだありません</div>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {posts.map((p) => (
-              <li
-                key={p.id}
-                style={{ padding: 12, borderTop: "1px solid #eee" }}
-              >
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{p.title}</div>
-                <div style={{ marginBottom: 4 }}>{p.body}</div>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  by {p.author} / {new Date(p.createdAt).toLocaleString()}
-                </div>
-              </li>
-            ))}
-          </ul>
+          </li>
+        ))}
+        {posts.length === 0 && (
+          <li className="text-slate-500">投稿がありません</li>
         )}
-      </div>
-    </div>
+      </ul>
+    </main>
   );
 }
