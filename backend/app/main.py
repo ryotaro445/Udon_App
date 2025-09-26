@@ -1,12 +1,27 @@
+# backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# ★ それぞれ “実際に使われている” ルーターの名前で import する
-from app.routers.menus import api_router as menus_router       # 例: api_router だった場合
-from app.routers.orders import router as orders_router         # 例: router だった場合
-from app.routers.comments import router as comments_router
-from app.routers.posts import router as posts_router           # 無ければ削除
-from app.routers.analytics import router as analytics_router
+# モジュールとして import（中の変数名が router / api_router どちらでもOKにする）
+import app.routers.menus as menus
+import app.routers.orders as orders
+import app.routers.comments as comments
+# 掲示板があるなら:
+try:
+    import app.routers.posts as posts
+except ImportError:
+    posts = None
+# 分析があるなら:
+try:
+    import app.routers.analytics as analytics
+except ImportError:
+    analytics = None
+
+def pick_router(mod):
+    """module から APIRouter を取り出す（api_router 優先）"""
+    if mod is None:
+        return None
+    return getattr(mod, "api_router", getattr(mod, "router", None))
 
 app = FastAPI()
 
@@ -18,12 +33,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ★ /api に統一
-app.include_router(menus_router,     prefix="/api", tags=["menus"])
-app.include_router(orders_router,    prefix="/api", tags=["orders"])
-app.include_router(comments_router,  prefix="/api", tags=["comments"])
-app.include_router(posts_router,     prefix="/api", tags=["posts"])        # 無ければ削除
-app.include_router(analytics_router, prefix="/api", tags=["analytics"])
+def include(name, mod, tag):
+    r = pick_router(mod)
+    if r is not None:
+        app.include_router(r, prefix="/api", tags=[tag])
+    else:
+        # 見つからない場合はログに残す（本番では print でも十分）
+        print(f"[WARN] Router not found in {name} (looking for api_router or router)")
+
+include("menus", menus, "menus")
+include("orders", orders, "orders")
+include("comments", comments, "comments")
+include("posts", posts, "posts")
+include("analytics", analytics, "analytics")
 
 @app.get("/")
 def root():
