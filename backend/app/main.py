@@ -2,59 +2,28 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# ルーターを“モジュール”として読み、変数名 router / api_router のどちらでも拾う
-from app.routers import menus, orders, comments, posts, analytics
-  
+# ★ 各ルーターを必ず import
+from app.routers import menus as menus_router
+from app.routers import analytics as analytics_router  # ある場合
 
-def pick_router(mod):
-    """module から APIRouter を取り出す（api_router 優先）"""
-    if not mod:
-        return None
-    return getattr(mod, "api_router", getattr(mod, "router", None))
+app = FastAPI()
 
-
-app = FastAPI(
-    # 念のため明示しておく（/openapi.json が 404 になるのを防ぐ）
-    openapi_url="/openapi.json",
-    docs_url="/docs",
-    redoc_url="/redoc",
-)
-
-# CORS（Vercel / ローカル）
+# ★ CORS：本番フロントとローカルを許可
+origins = [
+    "http://localhost:5173",
+    "https://udon-app.vercel.app",  # ← Vercel の本番URLに合わせる
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://udon-app.vercel.app", "http://localhost:5173"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ★ ここが肝：/menus と /api/menus の“両方”をマウント
+app.include_router(menus_router.router)       # /menus 系（GET/POST/PATCH/DELETE）
+app.include_router(menus_router.api_router)   # /api/menus 系（GET/POST/PATCH/DELETE）
 
-def include_both(mod, tag: str):
-    r = pick_router(mod)
-    if r is None:
-        print(f"[WARN] router not found for tag={tag}")
-        return
-    app.include_router(r, tags=[tag])  # 素のパス（例: /menus, /posts）
-    # ルーター自身に /api で始まるprefixが既にあるなら重複回避
-    pref = getattr(r, "prefix", "") or ""
-    if not pref.startswith("/api"):
-        app.include_router(r, prefix="/api", tags=[tag])
-
-
-
-include_both(menus, "menus")
-include_both(orders, "orders")
-include_both(comments, "comments")
-include_both(posts, "posts")
-include_both(analytics, "analytics")
-
-
-@app.get("/")
-def root():
-    return {"status": "ok"}
-
-
-@app.get("/healthz")
-def healthz():
-    return {"ok": True}
+# ★ analytics を使っているなら必ずマウント
+app.include_router(analytics_router.router)   # /api/analytics/*
