@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchHourly, type HourlyBucket } from "../api/analytics";
 import HourlySalesChart from "../components/HourlySalesChart";
+import { useNavigate } from "react-router-dom";
+import { useMode } from "../context/ModeCtx";
+
 
 export default function AnalyticsPage() {
+  const { mode } = useMode();
+  const navigate = useNavigate();
   const [data, setData] = useState<HourlyBucket[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -21,6 +26,10 @@ export default function AnalyticsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+  if (mode !== "staff" && mode !== "STAFF") navigate("/mode");
+}, [mode, navigate]);
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
