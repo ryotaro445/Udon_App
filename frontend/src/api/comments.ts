@@ -10,23 +10,21 @@ export type Comment = {
 
 /** モデレーション系のエラー文面をユーザー向けに整形 */
 function normalizeModerationError(raw: unknown): Error {
-  const msg = String((raw as any)?.message ?? raw ?? "");
-  // FastAPI 側の detail を抽出
-  const m = msg.match(/\{?"?detail"?\s*:\s*"([^"]+)"/);
-  const detail = m?.[1] ?? msg;
+  const msg = String((raw as any)?.message ?? (raw as any)?.detail ?? raw ?? "");
 
-  // backend/app/services/moderation.py の返しに合わせた分岐
-  if (/moderation disabled/i.test(detail)) {
+  if (/NGワード/.test(msg)) {
+    return new Error(msg); // ← サーバーからの NG ワード詳細をそのまま表示
+  }
+  if (/moderation disabled/i.test(msg)) {
     return new Error("現在、モデレーション機能が無効のため投稿できません。（管理者に連絡してください）");
   }
-  if (/blocked by moderation/i.test(detail) || /unsafe/i.test(detail) || /policy/i.test(detail)) {
+  if (/blocked by moderation/i.test(msg) || /unsafe/i.test(msg) || /policy/i.test(msg)) {
     return new Error("不適切な内容が含まれている可能性があります。表現を見直してください。");
   }
-  if (/empty text/i.test(detail)) {
+  if (/empty text/i.test(msg)) {
     return new Error("コメントが空です。内容を入力してください。");
   }
-  // それ以外は元のメッセージ
-  return new Error(detail || "コメントの送信に失敗しました。");
+  return new Error(msg || "コメントの送信に失敗しました。");
 }
 
 export function fetchComments(menuId: number) {
@@ -40,7 +38,6 @@ export async function createComment(
   try {
     return await http.post<Comment>(`/api/menus/${menuId}/comments`, payload);
   } catch (e) {
-    // 400（blocked）、503（disabled）などをユーザー向けメッセージに変換
     throw normalizeModerationError(e);
   }
 }
