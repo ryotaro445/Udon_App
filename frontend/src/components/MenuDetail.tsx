@@ -6,14 +6,14 @@ import { isE2E } from "../test/e2eFlag";
 // ==== 型 =====
 type RawComment = {
   id: number;
-  user?: string | null;   // サーバによっては user
-  author?: string | null; // もしくは author
+  user?: string | null;    // サーバによっては user
+  author?: string | null;  // もしくは author
   text: string;
   created_at?: string;
 };
 type Comment = {
   id: number;
-  user: string | null;
+  user: string | null;     // 画面表示では user に正規化
   text: string;
   created_at?: string;
 };
@@ -37,7 +37,7 @@ type Props = {
 // ---------- 正規化ヘルパ ----------
 const toComment = (r: RawComment): Comment => ({
   id: r.id,
-  user: (r.user ?? r.author ?? null) || null, // ★ author→user を吸収
+  user: (r.user ?? r.author ?? null) || null, // author→user を吸収
   text: r.text,
   created_at: r.created_at,
 });
@@ -52,7 +52,9 @@ async function getComments(menuId: number): Promise<Comment[]> {
     return (Array.isArray(data) ? data : []).map(toComment);
   }
 }
-async function postComment(menuId: number, body: { user?: string; text: string }): Promise<Comment> {
+
+// ★ 送信は author を使う（バックエンドに合わせる）
+async function postComment(menuId: number, body: { author?: string; text: string }): Promise<Comment> {
   try {
     const r = await apiPost<RawComment>(`/api/menus/${menuId}/comments`, body);
     return toComment(r);
@@ -98,14 +100,14 @@ export default function MenuDetail({
     setSending(true);
     setErr(null);
     try {
-      await postComment(menuId, { user: user.trim() || undefined, text: text.trim() });
+      await postComment(menuId, { author: user.trim() || undefined, text: text.trim() }); // ← ここを author に
       setText("");
-      await load();                             // ★成功時のみ更新
+      await load();                             // 成功時のみ更新
       setToast("コメントを投稿しました");
       setTimeout(() => setToast(null), 1800);
     } catch (e: any) {
       const msg = String(e?.message ?? "");
-      setErr(msg || "コメントの投稿に失敗しました"); // ★エラーバナーに表示
+      setErr(msg || "コメントの投稿に失敗しました"); // エラーバナーに表示
       setToast("投稿できませんでした");
       setTimeout(() => setToast(null), 1800);
     } finally {
@@ -152,7 +154,7 @@ export default function MenuDetail({
           <button onClick={onClose} aria-label="閉じる" style={{ fontSize:20, lineHeight:1 }}>×</button>
         </div>
 
-        {/* ★ エラーバナー（ここに置く） */}
+        {/* エラーバナー */}
         {err && (
           <div role="alert" className="bg-red-50 border border-red-300 text-red-800 p-3 rounded-md" style={{ marginBottom: 8 }}>
             <strong className="block font-semibold mb-1">投稿をブロックしました</strong>
