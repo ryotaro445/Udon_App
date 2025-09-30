@@ -42,7 +42,7 @@ const toComment = (r: RawComment): Comment => ({
   created_at: r.created_at,
 });
 
-// ==== API（/api 固定。/menus フォールバックは削除） ====
+// ==== API（/api 固定） ====
 async function getComments(menuId: number): Promise<Comment[]> {
   const data = await apiGet<RawComment[]>(`/api/menus/${menuId}/comments`);
   return (Array.isArray(data) ? data : []).map(toComment);
@@ -72,6 +72,7 @@ export default function MenuDetail({
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false); // ★ IME中フラグ
   const canSend = useMemo(() => text.trim().length > 0 && !sending, [text, sending]);
 
   // ===== 取得 =====
@@ -90,7 +91,7 @@ export default function MenuDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menuId]);
 
-  // ===== 送信（成功時だけ反映。エラー時は一切 state を触らない）=====
+  // ===== 送信（成功時だけ反映。エラー時は state を触らない）=====
   const submit = async () => {
     if (!canSend) return;
     setSending(true);
@@ -98,12 +99,12 @@ export default function MenuDetail({
     try {
       await postComment(menuId, { author: user.trim() || undefined, text: text.trim() });
       setText("");               // 成功時のみ入力クリア
-      await load();              // 成功時のみ一覧更新（サーバ値を真実に）
+      await load();              // 成功時のみ一覧更新
       setToast("コメントを投稿しました");
       setTimeout(() => setToast(null), 1800);
     } catch (e: any) {
       const msg = String(e?.message ?? "");
-      setErr(msg || "コメントの投稿に失敗しました"); // バナー表示のみ。リストは変更しない
+      setErr(msg || "コメントの投稿に失敗しました"); // バナー表示のみ
       setToast("投稿できませんでした");
       setTimeout(() => setToast(null), 1800);
     } finally {
@@ -111,8 +112,10 @@ export default function MenuDetail({
     }
   };
 
+  // ★ IME変換中のEnterでは送信しない
   const onKeyDown = (ev: React.KeyboardEvent<HTMLInputElement>) => {
-    if (ev.key === "Enter" && canSend) {
+    const isComp = composing || (ev as any).nativeEvent?.isComposing;
+    if (ev.key === "Enter" && !isComp && canSend) {
       ev.preventDefault();
       void submit();
     }
@@ -127,9 +130,7 @@ export default function MenuDetail({
           group.onSelect?.(group.items[0].id);
         }
       });
-    } catch {
-      /* no-op */
-    }
+    } catch { /* no-op */ }
   }, [open, options]);
 
   const effectiveCanAdd = isE2E() ? true : !!canAdd;
@@ -196,7 +197,7 @@ export default function MenuDetail({
           {comments.length === 0 && <div style={{ opacity: 0.7 }}>コメントはまだありません</div>}
           {comments.map((c) => (
             <div key={c.id} style={{ borderBottom: "1px solid #f0f0f0", padding: "6px 0" }}>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>
                 {c.user || "名無し"} / {c.created_at ? new Date(c.created_at).toLocaleString() : ""}
               </div>
               <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{c.text}</div>
@@ -211,6 +212,8 @@ export default function MenuDetail({
             onChange={(e) => setUser(e.target.value)}
             placeholder="名前（任意）"
             style={{ flex: "0 0 32%", border: "1px solid #ddd", borderRadius: 8, padding: "8px 10px" }}
+            onCompositionStart={() => setComposing(true)}
+            onCompositionEnd={() => setComposing(false)}
             onKeyDown={onKeyDown}
           />
           <input
@@ -218,6 +221,8 @@ export default function MenuDetail({
             onChange={(e) => setText(e.target.value)}
             placeholder="コメントを入力"
             style={{ flex: 1, border: "1px solid #ddd", borderRadius: 8, padding: "8px 10px" }}
+            onCompositionStart={() => setComposing(true)}
+            onCompositionEnd={() => setComposing(false)}
             onKeyDown={onKeyDown}
           />
           <button
