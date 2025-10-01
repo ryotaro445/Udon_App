@@ -1,4 +1,3 @@
-# backend/app/routers/analytics.py
 from __future__ import annotations
 import os
 from typing import Literal, List, Dict, Any
@@ -11,7 +10,6 @@ from ..models import Menu, Order, OrderItem
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
-# ---- スタッフ認証（X-Staff-Token と環境変数を照合） ----
 def require_staff(x_staff_token: str | None = Header(None, alias="X-Staff-Token")):
     expected = os.environ.get("STAFF_TOKEN") or os.environ.get("STAFF_PASSWORD")
     if not expected:
@@ -20,7 +18,6 @@ def require_staff(x_staff_token: str | None = Header(None, alias="X-Staff-Token"
         raise HTTPException(status_code=401, detail="staff only")
     return True
 
-# ---- サマリー ----
 @router.get("/summary")
 def summary(
     range: Literal["today", "7d", "30d"] = Query("today"),
@@ -62,7 +59,6 @@ def summary(
         "total_amount": int(total_amount or 0),
     }
 
-# ---- 人気メニュー ----
 @router.get("/top-menus")
 def top_menus(
     limit: int = 10,
@@ -101,7 +97,6 @@ def top_menus(
         for r in rows
     ]
 
-# ---- 時間帯別 ----
 @router.get("/hourly")
 def hourly(
     days: int = 7,
@@ -130,21 +125,16 @@ def hourly(
     except Exception:
         return {"days": days, "buckets": []}
 
-# ---- 日別売上（★ 追加）----
 @router.get("/daily-sales")
 def daily_sales(
     days: int = 14,
     db: Session = Depends(get_db),
     _staff: bool = Depends(require_staff),
 ):
-    """
-    直近days日の日別売上金額（と注文件数）
-    [{"date": "2025-09-20", "sales": 12000, "orders": 5}, ...]
-    """
+    """直近days日の日別売上金額＆注文件数"""
     if days <= 0 or days > 180:
         raise HTTPException(status_code=400, detail="invalid days")
 
-    # OrderItem × Menu.price で合計。Order.created_at で日付集計。
     rows = db.execute(text("""
         SELECT DATE(o.created_at) AS d,
                COALESCE(SUM(oi.quantity * m.price), 0) AS sales,
