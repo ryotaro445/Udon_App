@@ -1,7 +1,6 @@
-# backend/app/routers/menus.py
 from __future__ import annotations
 from typing import Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import select, asc, desc, func
 
@@ -42,7 +41,15 @@ def _model_dict(m: Menu) -> Dict[str, Any]:
 
 # ---------- CRUD: /menus ----------
 @router.get("/menus")
-def list_menus(limit: int = 100, offset: int = 0, order: Optional[str] = None, db: Session = Depends(get_db)):
+def list_menus(
+  limit: int = 100,
+  offset: int = 0,
+  order: Optional[str] = None,
+  db: Session = Depends(get_db),
+  resp: Response = None
+):
+  if resp is not None:
+    resp.headers["Cache-Control"] = "no-store"
   rows = db.execute(
     select(Menu).order_by(_order_clause(order)).limit(limit).offset(offset)
   ).scalars().all()
@@ -90,9 +97,11 @@ def delete_menu(menu_id: int, db: Session = Depends(get_db)):
   db.delete(m); db.commit()
   return {"ok": True}
 
-# ---------- CRUD: /api/menus（/api プレフィックスでも同じ） ----------
+# ---------- CRUD: /api/menus ----------
 @api_router.get("/menus")
-def api_list_menus(db: Session = Depends(get_db)):
+def api_list_menus(db: Session = Depends(get_db), resp: Response = None):
+  if resp is not None:
+    resp.headers["Cache-Control"] = "no-store"
   rows = db.execute(select(Menu).order_by(asc(Menu.id))).scalars().all()
   return [_model_dict(m) for m in rows]
 
@@ -108,7 +117,7 @@ def api_update_menu(menu_id: int, payload: Dict[str, Any], db: Session = Depends
 def api_delete_menu(menu_id: int, db: Session = Depends(get_db)):
   return delete_menu(menu_id, db)
 
-# ---------- likes（コメントは別ルーター comments.py に一本化） ----------
+# ---------- likes ----------
 @router.post("/menus/{menu_id}/like")
 def like_menu(
   menu_id: int,

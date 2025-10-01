@@ -16,7 +16,6 @@ export default function MenuAdminPage() {
       setRows(
         (data as Menu[]).map((m) => ({
           ...m,
-          // スキーマ揺れ吸収（stock/quantity/in_stock のどれかが来る想定）
           stock: (m as any).stock ?? (m as any).quantity ?? (m as any).in_stock ?? 0,
         }))
       );
@@ -24,8 +23,12 @@ export default function MenuAdminPage() {
       setErr(e.message || "読み込み失敗");
     }
   };
+
   useEffect(() => {
     void load();
+    // 従業員画面も定期的に最新化（在庫が他端末の注文で変動するため）
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
   }, []);
 
   const addBlank = () => {
@@ -58,7 +61,6 @@ export default function MenuAdminPage() {
   const onSave = async (row: Row) => {
     setErr(null);
     if (row._temp) {
-      // 追加 楽観的更新 → 失敗でロールバック
       const prev = rows;
       const optimisticId = row.id;
       setLoading(true);
@@ -71,6 +73,7 @@ export default function MenuAdminPage() {
           image: (row.image || "").trim() || null,
         });
         setRows((rs) => rs.map((r) => (r.id === optimisticId ? { ...(created as any) } : r)));
+        await load(); // ★ 保存直後に最新を取り直す
       } catch (e: any) {
         setRows(prev);
         setErr(e.message || "追加に失敗しました");
@@ -78,7 +81,6 @@ export default function MenuAdminPage() {
         setLoading(false);
       }
     } else {
-      // 更新（PATCH）
       const prev = rows;
       const patch: any = {
         name: row.name.trim(),
@@ -90,6 +92,7 @@ export default function MenuAdminPage() {
       try {
         setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, ...patch, _editing: false } : r)));
         await updateMenu(row.id, patch);
+        await load(); // ★ 保存直後に最新を取り直す
       } catch (e: any) {
         setRows(prev);
         setErr(e.message || "更新に失敗しました");
@@ -103,10 +106,10 @@ export default function MenuAdminPage() {
     if (!confirm("削除しますか？")) return;
     const prev = rows;
     setErr(null);
-    // 楽観的削除
     setRows((rs) => rs.filter((r) => r.id !== row.id));
     try {
       await deleteMenu(row.id);
+      await load(); // ★ 削除後も最新化
     } catch (e: any) {
       setRows(prev);
       setErr(e.message || "削除失敗");

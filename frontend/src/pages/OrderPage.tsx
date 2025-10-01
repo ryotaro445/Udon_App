@@ -3,19 +3,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useTable } from "../context/TableCtx";
 import TableBanner from "../components/TableBanner";
 import MenuCard, { type Menu, type MenuForCart } from "../components/MenuCard";
-import MenuDetail from "../components/MenuDetail"; // 既存のコメント/詳細モーダルとして流用
+import MenuDetail from "../components/MenuDetail";
 import Toast from "../components/Toast";
 import { fetchMenus } from "../api/menus";
 
-// 既存 types.CartItem と整合とるならリネームしてOK
 type CartItem = { menuId: number; qty: number };
+const API = import.meta.env.VITE_API_BASE;
 
 export default function OrderPage() {
   const { table, clear } = useTable();
 
-  // 商品一覧（在庫つき）
   const [menus, setMenus] = useState<Menu[]>([]);
-  // カート（localStorage復元）
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const raw = localStorage.getItem("cart");
@@ -25,19 +23,15 @@ export default function OrderPage() {
     }
   });
 
-  // コメントモーダル
   const [commentId, setCommentId] = useState<number | null>(null);
-
-  // ローディング／エラー／トースト
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const load = async () => {
-    setLoading(true);
     setError(null);
     try {
-      const data = await fetchMenus(); // /menus or /api/menus フォールバック実装に依存
+      const data = await fetchMenus();
       setMenus(data as Menu[]);
     } catch (e: any) {
       setError(e?.message ?? "メニュー取得に失敗しました。");
@@ -47,18 +41,11 @@ export default function OrderPage() {
   };
 
   useEffect(() => {
-    load();
-    const t = setInterval(load, 5000);
-    const onStock = () => load();
-    window.addEventListener("stock-updated", onStock);
-    return () => {
-      clearInterval(t);
-      window.removeEventListener("stock-updated", onStock);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void load();
+    const t = setInterval(load, 5000); // 本番UIでも5秒ポーリング
+    return () => clearInterval(t);
   }, []);
 
-  // MenuCard から受け取る「追加」処理（数量対応）
   const onAdd = (m: MenuForCart, addQty: number) => {
     if (typeof m.stock === "number" && m.stock <= 0) {
       setToast("在庫がありません");
@@ -89,13 +76,32 @@ export default function OrderPage() {
   );
 
   const submitOrder = async () => {
-    // 本来は POST /api/orders（table を含む）
-    // await apiPost('/api/orders', { table, items: cart })
+    if (cart.length === 0) return;
 
-    // --- デモ用：確実にトーストを出し、カートを空にする ---
-    setToast("注文を受け付けました");
-    setCart([]);
-    localStorage.setItem("cart", JSON.stringify([]));
+    // API へ実注文
+    try {
+      const res = await fetch(`${API}/api/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          table_no: table ?? 0,
+          items: cart.map((c) => ({ menu_id: c.menuId, quantity: c.qty })),
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.detail ?? "注文に失敗しました");
+      }
+
+      setToast("注文を受け付けました");
+      setCart([]);
+      localStorage.setItem("cart", JSON.stringify([]));
+
+      // ★ 在庫UIを即最新化
+      await load();
+    } catch (e: any) {
+      setToast(e?.message ?? "注文に失敗しました");
+    }
   };
 
   return (
@@ -124,7 +130,7 @@ export default function OrderPage() {
             key={m.id}
             m={m}
             onAdd={onAdd}
-            onOpenComment={(id) => setCommentId(id)}  // ★ コメントを開く
+            onOpenComment={(id) => setCommentId(id)}
           />
         ))}
       </div>
@@ -144,12 +150,8 @@ export default function OrderPage() {
         </button>
       </div>
 
-      {/* コメントモーダル（既存の MenuDetail を流用） */}
       {commentId !== null && (
-        <MenuDetail
-          menuId={commentId}
-          onClose={() => setCommentId(null)}
-        />
+        <MenuDetail menuId={commentId} onClose={() => setCommentId(null)} />
       )}
     </div>
   );

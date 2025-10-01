@@ -1,11 +1,26 @@
 // frontend/src/api/menus.ts
-import { http } from "./http";
-export type { Menu } from "../components/MenuCard";
+export type Menu = {
+  id: number;
+  name: string;
+  price: number;
+  stock?: number | null;
+  in_stock?: boolean | null;
+  image?: string | null;
+};
 
-// 取得
-export async function fetchMenus() {
-  return http.get<any[]>("/api/menus");
+const API = import.meta.env.VITE_API_BASE;
+
+// 取得（http ラッパを経由せず fetch で no-store と ts を付与）
+export async function fetchMenus(): Promise<Menu[]> {
+  const u = new URL(`${API}/api/menus`);
+  u.searchParams.set("ts", String(Date.now())); // キャッシュバスター
+  const res = await fetch(u.toString(), { cache: "no-store" as RequestCache });
+  if (!res.ok) throw new Error("failed to load menus");
+  return (await res.json()) as Menu[];
 }
+
+// 以下は既存どおり http ラッパを使ってもOK（必要なら置換）
+import { http } from "./http";
 
 // 追加
 export async function createMenu(payload: any) {
@@ -22,8 +37,7 @@ export async function deleteMenu(id: number | string) {
   return http.del<void>(`/api/menus/${String(id)}`);
 }
 
-// 置換（必要な場合のみ使用）
+// 置換（必要時のみ）
 export async function replaceMenu(id: number | string, payload: any) {
-  // PUT がサーバに無い場合は PATCH で代替してもOK
   return http.post<any>(`/api/menus/${String(id)}`, payload);
 }

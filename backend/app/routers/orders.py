@@ -71,15 +71,21 @@ def update_order_status(order_id: int, payload: dict, db: Session = Depends(get_
     db.commit()
     return {"id": order.id, "status": order.status}
 
-# ---- POST /api/orders（tests/test_orders_and_stock 用）----
+# ---- POST /api/orders（お客様UI用）----
 @api_router.post("/orders", status_code=201)
 def api_create_order(payload: dict, db: Session = Depends(get_db)):
+    """
+    items = [{menu_id, qty|quantity}, ...]
+    table_no (任意)
+    - 在庫チェック＆減算をトランザクション内で実施
+    - OrderItem.price は Menu.price のスナップショット
+    """
     items = payload.get("items") or []
-    table_no = payload.get("table_no")
+    table_no = payload.get("table_no") or payload.get("table_id") or 0
     if not items:
         raise HTTPException(status_code=400, detail="empty items")
 
-    # 在庫などの事前チェック
+    # 事前チェック
     for it in items:
         m = db.get(Menu, it["menu_id"])
         if not m:
@@ -90,35 +96,43 @@ def api_create_order(payload: dict, db: Session = Depends(get_db)):
         if m.stock is not None and m.stock < qty:
             raise HTTPException(status_code=400, detail="out of stock")
 
-    # テスト期待に合わせ created を返す
-    order = Order(status="created", table_id=table_no or 0)
-    db.add(order)
-    db.flush()  # order.id 取得
+    try:
+        order = Order(status="created", table_id=table_no)
+        db.add(order)
+        db.flush()  # order.id
 
-    for it in items:
-        m = db.get(Menu, it["menu_id"])
-        qty = int(it.get("qty") or it.get("quantity"))
-        db.add(OrderItem(order_id=order.id, menu_id=m.id, price=m.price, quantity=qty))
-        if m.stock is not None:
-            m.stock -= qty
-            db.add(m)
+        for it in items:
+            m = db.get(Menu, it["menu_id"])
+            qty = int(it.get("qty") or it.get("quantity"))
+            # OrderItem 生成（価格は発注時点のコピー）
+            db.add(OrderItem(order_id=order.id, menu_id=m.id, price=m.price, quantity=qty))
+            # 在庫減算
+            if m.stock is not None:
+                if m.stock < qty:
+                    raise HTTPException(status_code=400, detail="out of stock")
+                m.stock -= qty
+                db.add(m)
 
-    db.commit()
-    return {"id": order.id, "status": order.status}
+        db.commit()
+        return {"id": order.id, "status": order.status}
+    except:
+        db.rollback()
+        raise
 
-# ---- POST /orders（tests/test_phase6_core 用）----
+# ---- POST /orders（tests/test_phase6_core 互換・UIでも利用可）----
 @router.post("")
 def create_order(payload: dict, db: Session = Depends(get_db)):
+    """
+    items = [{menu_id, quantity|qty}, ...]
+    table_id (任意)
+    - こちらも在庫を必ず減算するように修正
+    """
     items = payload.get("items") or []
-    table_id = payload.get("table_id") or 0
+    table_id = payload.get("table_id") or payload.get("table_no") or 0
     if not items:
         raise HTTPException(status_code=400, detail="empty items")
 
-    order = Order(status="placed", table_id=table_id)
-    db.add(order)
-    db.flush()
-
-    # アイテム作成
+    # 事前チェック
     for it in items:
         m = db.get(Menu, it["menu_id"])
         if not m:
@@ -126,16 +140,36 @@ def create_order(payload: dict, db: Session = Depends(get_db)):
         qty = int(it.get("quantity") or it.get("qty") or 0)
         if qty <= 0:
             raise HTTPException(status_code=400, detail="invalid qty")
-        db.add(OrderItem(order_id=order.id, menu_id=m.id, price=m.price, quantity=qty))
+        if m.stock is not None and m.stock < qty:
+            raise HTTPException(status_code=400, detail="out of stock")
 
-    db.commit()
+    try:
+        order = Order(status="placed", table_id=table_id)
+        db.add(order)
+        db.flush()
 
-    # レスポンス用の items/total（price を含める）
-    items_payload = _fetch_items_payload(db, order.id)
-    total = _calc_total_from_items(items_payload)
-    return {
-        "id": order.id,
-        "status": order.status,
-        "items": [{"menu_id": it["menu_id"], "quantity": it["quantity"], "price": it["price"]} for it in items_payload],
-        "total": total,
-    }
+        # アイテム作成 ＋ 在庫減算
+        for it in items:
+            m = db.get(Menu, it["menu_id"])
+            qty = int(it.get("quantity") or it.get("qty"))
+            db.add(OrderItem(order_id=order.id, menu_id=m.id, price=m.price, quantity=qty))
+            if m.stock is not None:
+                if m.stock < qty:
+                    raise HTTPException(status_code=400, detail="out of stock")
+                m.stock -= qty
+                db.add(m)
+
+        db.commit()
+
+        # レスポンス用の items/total（price を含める）
+        items_payload = _fetch_items_payload(db, order.id)
+        total = _calc_total_from_items(items_payload)
+        return {
+            "id": order.id,
+            "status": order.status,
+            "items": [{"menu_id": it["menu_id"], "quantity": it["quantity"], "price": it["price"]} for it in items_payload],
+            "total": total,
+        }
+    except:
+        db.rollback()
+        raise
