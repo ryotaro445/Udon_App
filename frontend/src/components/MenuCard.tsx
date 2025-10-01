@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { isE2E } from "../test/e2eFlag";
 
-// 型定義
 export type Menu = {
   id: number;
   name: string;
@@ -10,8 +9,6 @@ export type Menu = {
   stock: number;
   image?: string | null;
 };
-
-// カートに必要な最小情報（構造型）
 export type MenuForCart = { id: number; price: number; stock?: number };
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
@@ -27,17 +24,38 @@ export default function MenuCard({
 }) {
   const [qty, setQty] = useState<number>(isE2E() ? 1 : 0);
   const [likeCount, setLikeCount] = useState<number>(0);
-  const [isLiking, setIsLiking] = useState<boolean>(false);
+  const [liked, setLiked] = useState<boolean>(false);
+  const [busy, setBusy] = useState<boolean>(false);
 
-  // ---- 初期カウント取得 ----
+  // userToken 準備（無ければ生成）
+  let token = localStorage.getItem("userToken") ?? "";
+  if (!token) {
+    const fallback = Math.random().toString(36).slice(2);
+    token = (globalThis.crypto?.randomUUID?.() as string | undefined)
+      ? `DEMO-${crypto.randomUUID()}`
+      : `DEMO-${fallback}`;
+    localStorage.setItem("userToken", token);
+  }
+
+  // 初期ロード：count と自分の liked 状態を並列取得
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/api/menus/${m.id}/likes`);
-        if (!r.ok) return;
-        const js = await r.json();
-        if (mounted) setLikeCount(Number(js?.count ?? 0));
+        const [r1, r2] = await Promise.all([
+          fetch(`${API_BASE}/api/menus/${m.id}/likes`),
+          fetch(`${API_BASE}/api/menus/${m.id}/like/me`, {
+            headers: { "X-User-Token": token },
+          }),
+        ]);
+        if (mounted && r1.ok) {
+          const js1 = await r1.json();
+          setLikeCount(Number(js1?.count ?? 0));
+        }
+        if (mounted && r2.ok) {
+          const js2 = await r2.json();
+          setLiked(Boolean(js2?.liked));
+        }
       } catch {
         /* noop */
       }
@@ -45,54 +63,65 @@ export default function MenuCard({
     return () => {
       mounted = false;
     };
+    // token は固定化されるので依存に入れなくてOK
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.id]);
 
-  // 「＋」で数量を増やす
   const inc = () => setQty((v) => v + 1);
 
-  // 「追加」：qty が 0 なら 1 にしてカートへ投入
   const addNow = () => {
     const useQty = qty > 0 ? qty : 1;
     onAdd?.({ id: m.id, price: m.price, stock: m.stock }, useQty);
     setQty(isE2E() ? 1 : 0);
   };
 
-  // ---- いいね：押すだけ（重複はサーバ側でidempotent扱い） ----
-  const doLike = async () => {
-    if (isLiking) return;
-    setIsLiking(true);
+  // トグル：liked → DELETE、未liked → POST（楽観的更新＋サーバ値同期）
+  const toggleLike = async () => {
+    if (busy) return;
+    setBusy(true);
     try {
-      // userToken を用意（無ければ作って保存）
-      let token = localStorage.getItem("userToken") ?? "";
-      if (!token) {
-        // crypto.randomUUID が無い環境でも動くフォールバック
-        const fallback = Math.random().toString(36).slice(2);
-        token = (globalThis.crypto?.randomUUID?.() as string | undefined)
-          ? `DEMO-${crypto.randomUUID()}`
-          : `DEMO-${fallback}`;
-        localStorage.setItem("userToken", token);
-      }
+      if (!liked) {
+        // 楽観的に +1 & liked=true
+        setLiked(true);
+        setLikeCount((v) => v + 1);
 
-      const r = await fetch(`${API_BASE}/api/menus/${m.id}/like`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Token": token,
-        },
-      });
-
-      if (r.ok) {
-        const js = await r.json(); // {new: boolean, count: number}
-        if (typeof js?.count === "number") setLikeCount(js.count);
+        const r = await fetch(`${API_BASE}/api/menus/${m.id}/like`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Token": token,
+          },
+        });
+        if (r.ok) {
+          const js = await r.json(); // {new, count}
+          if (typeof js?.count === "number") setLikeCount(js.count);
+          setLiked(true);
+        } else {
+          // 失敗したらロールバック
+          setLiked(false);
+          setLikeCount((v) => Math.max(0, v - 1));
+        }
       } else {
-        // 409/400 等は据え置き（必要なら再取得）
-        // const re = await fetch(`${API_BASE}/api/menus/${m.id}/likes`);
-        // if (re.ok) setLikeCount((await re.json()).count ?? likeCount);
+        // 楽観的に -1 & liked=false
+        setLiked(false);
+        setLikeCount((v) => Math.max(0, v - 1));
+
+        const r = await fetch(`${API_BASE}/api/menus/${m.id}/like`, {
+          method: "DELETE",
+          headers: { "X-User-Token": token },
+        });
+        if (r.ok) {
+          const js = await r.json(); // {deleted, count}
+          if (typeof js?.count === "number") setLikeCount(js.count);
+          setLiked(false);
+        } else {
+          // 失敗したらロールバック
+          setLiked(true);
+          setLikeCount((v) => v + 1);
+        }
       }
-    } catch {
-      /* noop */
     } finally {
-      setIsLiking(false);
+      setBusy(false);
     }
   };
 
@@ -103,7 +132,6 @@ export default function MenuCard({
       className="rounded-2xl shadow p-3 bg-white flex flex-col gap-2"
       data-testid="menu-card"
     >
-      {/* 画像（任意） */}
       {m.image ? (
         <img
           src={m.image}
@@ -146,16 +174,18 @@ export default function MenuCard({
           </button>
         )}
 
-        {/* いいねボタン（右寄せ） */}
+        {/* いいね（トグル） */}
         <button
           data-testid={`like-${m.id}`}
-          onClick={doLike}
-          disabled={isLiking}
-          className="rounded px-3 py-1 border ml-auto"
-          title="いいね"
+          onClick={toggleLike}
+          disabled={busy}
+          className={`rounded px-3 py-1 border ml-auto ${
+            liked ? "bg-gray-200" : ""
+          }`}
+          title={liked ? "いいねを取り消す" : "いいね"}
           aria-label="いいね"
         >
-          ❤️ {likeCount}
+          {liked ? "💖" : "🤍"} {likeCount}
         </button>
       </div>
     </article>
