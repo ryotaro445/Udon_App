@@ -44,7 +44,7 @@ class Order(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     status = Column(String(32), nullable=False, default="placed")  # placed, cooking, served
     table_id = Column(Integer, nullable=True)
-
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 
 

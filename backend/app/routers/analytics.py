@@ -136,27 +136,25 @@ def daily_sales(
     days: int = 14,
     db: Session = Depends(get_db),
     _staff: bool = Depends(require_staff),
-) -> List[Dict[str, Any]]:
+):
     """
-    直近days日の日別売上金額（と注文件数）を返す
+    直近days日の日別売上金額（と注文件数）
     [{"date": "2025-09-20", "sales": 12000, "orders": 5}, ...]
     """
     if days <= 0 or days > 180:
         raise HTTPException(status_code=400, detail="invalid days")
 
-    # SQLite想定。orders(total_amount, created_at) を優先使用。
-    try:
-        q = text("""
-            SELECT DATE(created_at) AS d,
-                   COALESCE(SUM(total_amount), 0) AS sales,
-                   COUNT(*) AS orders
-            FROM orders
-            WHERE created_at >= DATETIME('now', '-' || :days || ' days')
-            GROUP BY DATE(created_at)
-            ORDER BY d ASC
-        """)
-        rows = db.execute(q, {"days": days}).fetchall()
-        return [{"date": r[0], "sales": int(r[1] or 0), "orders": int(r[2] or 0)} for r in rows]
-    except Exception:
-        # フォールバック（created_at/total_amountが無い場合は空配列）
-        return []
+    # OrderItem × Menu.price で合計。Order.created_at で日付集計。
+    rows = db.execute(text("""
+        SELECT DATE(o.created_at) AS d,
+               COALESCE(SUM(oi.quantity * m.price), 0) AS sales,
+               COUNT(DISTINCT o.id) AS orders
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        JOIN menus m        ON m.id = oi.menu_id
+        WHERE o.created_at >= DATETIME('now', '-' || :days || ' days')
+        GROUP BY DATE(o.created_at)
+        ORDER BY d ASC
+    """), {"days": days}).fetchall()
+
+    return [{"date": r[0], "sales": int(r[1] or 0), "orders": int(r[2] or 0)} for r in rows]

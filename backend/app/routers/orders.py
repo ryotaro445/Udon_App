@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from ..database import get_db
 from ..models import Order, OrderItem, Menu
+from datetime import datetime, timezone
+
+
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 api_router = APIRouter(prefix="/api", tags=["orders"])
@@ -35,7 +38,7 @@ def list_order_ids(status: str, db: Session = Depends(get_db)):
     # もし placed が 1件も無いなら、テストが前段で状態を変更したケースに備えて
     # プレースホルダーの placed 注文を1件だけ生成して返す
     if not ids and status == "placed":
-        o = Order(status="placed", table_id=0)
+        o = Order(status="placed", table_id=0, created_at=datetime.now(timezone.utc))
         db.add(o)
         db.commit()
         ids = [o.id]
@@ -97,7 +100,7 @@ def api_create_order(payload: dict, db: Session = Depends(get_db)):
             raise HTTPException(status_code=400, detail="out of stock")
 
     try:
-        order = Order(status="created", table_id=table_no)
+        order = Order(status="created", table_id=table_no, created_at=datetime.now(timezone.utc))
         db.add(order)
         db.flush()  # order.id
 
@@ -144,7 +147,7 @@ def create_order(payload: dict, db: Session = Depends(get_db)):
             raise HTTPException(status_code=400, detail="out of stock")
 
     try:
-        order = Order(status="placed", table_id=table_id)
+        order = Order(status="placed", table_id=table_id, created_at=datetime.now(timezone.utc))
         db.add(order)
         db.flush()
 
