@@ -6,12 +6,14 @@ from app.routers import menus as menus_router
 from app.routers import analytics as analytics_router
 from app.routers import posts as posts_router 
 from app.routers import comments as comments_router  
+from app.routers import likes as likes_router
 
 app = FastAPI()
 
 # CORS（必要に応じてドメインを追加）
 origins = [
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "https://udon-app.vercel.app",
 ]
 app.add_middleware(
@@ -32,3 +34,5 @@ app.include_router(analytics_router.router)
 app.include_router(posts_router.router, prefix="/api")
 
 app.include_router(comments_router.router)
+
+app.include_router(likes_router.router, prefix="/api")
