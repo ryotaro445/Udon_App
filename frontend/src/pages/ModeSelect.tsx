@@ -7,7 +7,6 @@ export default function ModeSelect() {
   const navigate = useNavigate();
   const { setMode } = useMode();
 
-  // フロント側の従業員パス（未設定なら admin）
   const staffPass =
     import.meta.env.VITE_STAFF_PASS ??
     import.meta.env.VITE_STAFF_PASSWORD ??
@@ -15,16 +14,19 @@ export default function ModeSelect() {
 
   const pickCustomer = () => {
     setMode("customer");
-    navigate("/order?table=12");
+    try { localStorage.setItem("mode", "customer"); } catch {}
+    navigate("/c/order?table=12");
   };
 
   const pickStaff = () => {
     const input = window.prompt("従業員パスワードを入力してください") ?? "";
     if (input.trim() === staffPass) {
-      // サーバ照合用トークンも保存（http.ts が X-Staff-Token を付ける）
-      try { localStorage.setItem("staffToken", input.trim()); } catch {}
+      try {
+        localStorage.setItem("staffToken", input.trim());
+        localStorage.setItem("mode", "staff");
+      } catch {}
       setMode("staff");
-      navigate("/menu-admin");
+      navigate("/s/menu-admin");
     } else {
       window.alert("パスワードが違います");
     }
@@ -48,13 +50,11 @@ export default function ModeSelect() {
 
         <div className="px-8 pb-8">
           <div className="flex justify-center gap-12 flex-wrap">
-            {/* お客様モード（黒ボタン＋ベルの挿絵） */}
             <button
               aria-label="お客様モード"
               onClick={pickCustomer}
               className="w-56 aspect-square flex flex-col items-center justify-center
-                         rounded-2xl bg-black text-white
-                         shadow-md ring-offset-2 transition
+                         rounded-2xl bg-black text-white shadow-md ring-offset-2 transition
                          active:scale-[0.99]
                          focus:outline-none focus-visible:ring-2 focus-visible:ring-black/40
                          dark:bg-slate-800 dark:hover:bg-slate-700"
@@ -65,13 +65,11 @@ export default function ModeSelect() {
               <div className="mt-2 text-sm opacity-80">注文・掲示板</div>
             </button>
 
-            {/* 従業員モード（白ボタン＋コックの挿絵） */}
             <button
               aria-label="従業員モード"
               onClick={pickStaff}
               className="w-56 aspect-square flex flex-col items-center justify-center
-                         rounded-2xl border border-slate-300 bg-white
-                         shadow-sm transition hover:bg-slate-50
+                         rounded-2xl border border-slate-300 bg-white shadow-sm transition hover:bg-slate-50
                          active:scale-[0.99]
                          focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 ring-offset-2
                          dark:bg-slate-900 dark:border-slate-700 dark:hover:bg-slate-800"
@@ -88,8 +86,7 @@ export default function ModeSelect() {
           <div className="mt-8 rounded-xl bg-slate-50 dark:bg-slate-900/60 p-4 text-xs text-slate-600 dark:text-slate-400 text-center">
             <p>※ 従業員モードはパスワード入力があります。</p>
             <p className="mt-1">
-              環境変数 <code className="font-mono">VITE_STAFF_PASS</code> 未設定時は{" "}
-              <code className="font-mono">admin</code>
+              環境変数 <code className="font-mono">VITE_STAFF_PASS</code> 未設定時は <code className="font-mono">admin</code>
             </p>
           </div>
         </div>
