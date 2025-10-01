@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchPosts, createPost, deletePost, type Post } from "../api/posts";
 
-export default function BoardPage() {
+export default function BoardPage({ canPost = false }: { canPost?: boolean }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -11,38 +11,43 @@ export default function BoardPage() {
   const load = async () => {
     setErr(null);
     try {
-      const list = await fetchPosts(50);   // ← GET も API_BASE 経由
+      const list = await fetchPosts(50);
       setPosts(list);
     } catch (e: any) {
       setErr(e?.message ?? "読み込みに失敗しました");
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canPost) return; // お客様は投稿不可
     setLoading(true);
     setErr(null);
     try {
-      await createPost({ title, body, author: "guest" }); // ← ✅ ここを必ず API_BASE 経由に
-      setTitle(""); setBody("");
+      await createPost({ title, body, author: "staff" });
+      setTitle("");
+      setBody("");
       await load();
     } catch (e: any) {
-      setErr(e?.message ?? "投稿に失敗");
+      setErr(e?.message ?? "投稿に失敗しました");
     } finally {
       setLoading(false);
     }
   };
 
   const onDelete = async (id: number) => {
+    if (!canPost) return; // お客様は削除不可
     const keep = posts;
-    setPosts(p => p.filter(x => x.id !== id)); // 楽観的更新
+    setPosts((p) => p.filter((x) => x.id !== id)); // 楽観的更新
     try {
-      await deletePost(id);                    // ← DELETE も API_BASE 経由
+      await deletePost(id);
     } catch {
       setErr("削除に失敗");
-      setPosts(keep);                          // ロールバック
+      setPosts(keep); // ロールバック
     }
   };
 
@@ -51,25 +56,55 @@ export default function BoardPage() {
       <h1 className="text-xl font-bold">掲示板</h1>
       {err && <div className="text-red-600">{err}</div>}
 
-      <form onSubmit={onSubmit} className="space-y-2">
-        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="タイトル" className="border px-2 py-1 rounded w-full" />
-        <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="本文" className="border px-2 py-1 rounded w-full min-h-[120px]" />
-        <button disabled={loading} className="px-3 py-1 rounded bg-black text-white disabled:opacity-50">投稿</button>
-      </form>
+      {/* 投稿UIは staff だけ */}
+      {canPost && (
+        <form onSubmit={onSubmit} className="space-y-2">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="タイトル"
+            className="border px-2 py-1 rounded w-full"
+          />
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="本文"
+            className="border px-2 py-1 rounded w-full min-h-[120px]"
+          />
+          <button
+            disabled={loading}
+            className="px-3 py-1 rounded bg-black text-white disabled:opacity-50"
+          >
+            投稿
+          </button>
+        </form>
+      )}
 
       <ul className="divide-y">
-        {posts.map(p => (
-          <li key={p.id} className="py-3 flex items-start justify-between gap-4">
+        {posts.map((p) => (
+          <li
+            key={p.id}
+            className="py-3 flex items-start justify-between gap-4"
+          >
             <div>
               <div className="font-semibold">{p.title}</div>
-              <div className="text-sm text-slate-600 whitespace-pre-wrap">{p.body}</div>
+              <div className="text-sm text-slate-600 whitespace-pre-wrap">
+                {p.body}
+              </div>
             </div>
-            <button onClick={() => onDelete(p.id)} className="px-3 py-1 rounded border text-red-600 border-red-300 hover:bg-red-50">
-              削除
-            </button>
+            {canPost && (
+              <button
+                onClick={() => onDelete(p.id)}
+                className="px-3 py-1 rounded border text-red-600 border-red-300 hover:bg-red-50"
+              >
+                削除
+              </button>
+            )}
           </li>
         ))}
-        {posts.length === 0 && <li className="text-slate-500">投稿がありません</li>}
+        {posts.length === 0 && (
+          <li className="text-slate-500">投稿がありません</li>
+        )}
       </ul>
     </main>
   );
