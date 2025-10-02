@@ -10,6 +10,7 @@ from ..models import Menu, Order, OrderItem
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
+
 def require_staff(x_staff_token: str | None = Header(None, alias="X-Staff-Token")):
     expected = os.environ.get("STAFF_TOKEN") or os.environ.get("STAFF_PASSWORD")
     if not expected:
@@ -17,6 +18,7 @@ def require_staff(x_staff_token: str | None = Header(None, alias="X-Staff-Token"
     if not x_staff_token or x_staff_token != expected:
         raise HTTPException(status_code=401, detail="staff only")
     return True
+
 
 @router.get("/summary")
 def summary(
@@ -59,6 +61,7 @@ def summary(
         "total_amount": int(total_amount or 0),
     }
 
+
 @router.get("/top-menus")
 def top_menus(
     limit: int = 10,
@@ -97,6 +100,7 @@ def top_menus(
         for r in rows
     ]
 
+
 @router.get("/hourly")
 def hourly(
     days: int = 7,
@@ -120,10 +124,14 @@ def hourly(
             .order_by("h")
         ).all()
         by_hour = {int(r.h): (int(r.cnt), int(r.amt)) for r in rows if r.h is not None}
-        buckets = [{"hour": h, "count": by_hour.get(h, (0, 0))[0], "amount": by_hour.get(h, (0, 0))[1]} for h in range(24)]
+        buckets = [
+            {"hour": h, "count": by_hour.get(h, (0, 0))[0], "amount": by_hour.get(h, (0, 0))[1]}
+            for h in range(24)
+        ]
         return {"days": days, "buckets": buckets}
     except Exception:
         return {"days": days, "buckets": []}
+
 
 @router.get("/daily-sales")
 def daily_sales(
@@ -135,7 +143,9 @@ def daily_sales(
     if days <= 0 or days > 180:
         raise HTTPException(status_code=400, detail="invalid days")
 
-    rows = db.execute(text("""
+    rows = db.execute(
+        text(
+            """
         SELECT DATE(o.created_at) AS d,
                COALESCE(SUM(oi.quantity * m.price), 0) AS sales,
                COUNT(DISTINCT o.id) AS orders
@@ -145,6 +155,120 @@ def daily_sales(
         WHERE o.created_at >= DATETIME('now', '-' || :days || ' days')
         GROUP BY DATE(o.created_at)
         ORDER BY d ASC
-    """), {"days": days}).fetchall()
+    """
+        ),
+        {"days": days},
+    ).fetchall()
 
     return [{"date": r[0], "sales": int(r[1] or 0), "orders": int(r[2] or 0)} for r in rows]
+
+
+# ===== ここからメニュー別 =====
+
+@router.get("/menu-totals")
+def menu_totals(
+    days: int = 30,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    _staff: bool = Depends(require_staff),
+) -> List[Dict[str, Any]]:
+    """
+    直近days日のメニュー別 合計（注文件数・売上金額）
+    days<=0 なら全期間
+    """
+    q = (
+        select(
+            OrderItem.menu_id.label("menu_id"),
+            Menu.name.label("name"),
+            func.sum(OrderItem.quantity).label("orders"),
+            func.sum(OrderItem.quantity * Menu.price).label("sales"),
+        )
+        .join(Menu, Menu.id == OrderItem.menu_id)
+        .join(Order, Order.id == OrderItem.order_id)
+        .group_by(OrderItem.menu_id, Menu.name)
+        .order_by(desc(func.sum(OrderItem.quantity)))
+        .limit(limit)
+    )
+
+    if days > 0:
+        from datetime import datetime, timedelta, timezone
+        start = datetime.now(timezone.utc) - timedelta(days=days)
+        q = q.where(Order.created_at >= start)  # type: ignore[attr-defined]
+
+    rows = db.execute(q).all()
+    return [
+        {
+            "menu_id": r.menu_id,
+            "name": r.name,
+            "orders": int(r.orders or 0),
+            "sales": int(r.sales or 0),
+        }
+        for r in rows
+    ]
+
+
+@router.get("/menu-daily")
+def menu_daily(
+    menu_id: int = Query(..., description="対象メニューID"),
+    days: int = 14,
+    db: Session = Depends(get_db),
+    _staff: bool = Depends(require_staff),
+) -> List[Dict[str, Any]]:
+    """直近days日の 指定メニュー の日別（件数・売上）"""
+    if days <= 0 or days > 180:
+        raise HTTPException(status_code=400, detail="invalid days")
+
+    rows = db.execute(
+        text(
+            """
+        SELECT DATE(o.created_at) AS d,
+               COALESCE(SUM(oi.quantity), 0)                AS orders,
+               COALESCE(SUM(oi.quantity * m.price), 0)      AS sales
+          FROM orders o
+          JOIN order_items oi ON oi.order_id = o.id
+          JOIN menus m        ON m.id = oi.menu_id
+         WHERE oi.menu_id = :menu_id
+           AND o.created_at >= DATETIME('now', '-' || :days || ' days')
+         GROUP BY DATE(o.created_at)
+         ORDER BY d ASC
+        """
+        ),
+        {"menu_id": menu_id, "days": days},
+    ).fetchall()
+
+    return [{"date": r[0], "orders": int(r[1] or 0), "sales": int(r[2] or 0)} for r in rows]
+
+
+@router.get("/menu-hourly")
+def menu_hourly(
+    menu_id: int,
+    days: int = 7,
+    db: Session = Depends(get_db),
+    _staff: bool = Depends(require_staff),
+) -> Dict[str, Any]:
+    """直近days日の 指定メニュー の時間別（0-23時）件数・売上"""
+    try:
+        from datetime import datetime, timedelta, timezone
+        start = datetime.now(timezone.utc) - timedelta(days=days)
+        hour_expr = func.strftime("%H", Order.created_at)  # SQLite
+        rows = db.execute(
+            select(
+                hour_expr.label("h"),
+                func.coalesce(func.sum(OrderItem.quantity), 0).label("cnt"),
+                func.coalesce(func.sum(OrderItem.quantity * Menu.price), 0).label("amt"),
+            )
+            .join(OrderItem, OrderItem.order_id == Order.id)
+            .join(Menu, Menu.id == OrderItem.menu_id)
+            .where(Order.created_at >= start)
+            .where(OrderItem.menu_id == menu_id)
+            .group_by("h")
+            .order_by("h")
+        ).all()
+        by_hour = {int(r.h): (int(r.cnt), int(r.amt)) for r in rows if r.h is not None}
+        buckets = [
+            {"hour": h, "orders": by_hour.get(h, (0, 0))[0], "amount": by_hour.get(h, (0, 0))[1]}
+            for h in range(24)
+        ]
+        return {"menu_id": menu_id, "days": days, "buckets": buckets}
+    except Exception:
+        return {"menu_id": menu_id, "days": days, "buckets": []}
