@@ -1,4 +1,3 @@
-// src/pages/MenuAdminPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { fetchMenus, createMenu, deleteMenu, updateMenu, type Menu } from "../api/menus";
 
@@ -145,7 +144,11 @@ export default function MenuAdminPage() {
       </header>
 
       {err && (
-        <div role="alert" data-testid="alert-error" className="p-3 rounded-lg bg-red-100 text-red-700">
+        <div
+          role="alert"
+          data-testid="alert-error"
+          className="p-3 rounded-lg bg-red-100 text-red-700"
+        >
           {err}
         </div>
       )}
@@ -155,15 +158,15 @@ export default function MenuAdminPage() {
           const editing = !!m._editing;
           const stock = (m as any).stock ?? 0;
           const validImg = (m.image || "").trim().startsWith("http");
+
           return (
             <div
               key={m.id}
               data-testid="menu-row"
-              /* 画像を160pxに拡張。名前カラムは min-w-0 を付けてはみ出し防止 */
-              className="grid grid-cols-[160px_1fr_140px_140px_auto] gap-6 items-center p-4"
+              className="grid grid-cols-[180px_1fr_120px_120px_auto] gap-8 items-start p-5"
             >
               {/* 画像 */}
-              <div className="self-start">
+              <div className="shrink-0">
                 {editing ? (
                   <>
                     <input
@@ -171,13 +174,13 @@ export default function MenuAdminPage() {
                       placeholder="画像URL"
                       value={m.image || ""}
                       onChange={(e) => setField(m.id, "image", e.target.value)}
-                      className="w-[160px] rounded-md border px-2 py-1 text-sm"
+                      className="w-[180px] rounded-md border px-2 py-1 text-sm"
                     />
                     {m.image && validImg && (
                       <img
                         src={m.image}
                         alt="preview"
-                        className="w-[160px] h-[96px] object-cover rounded-lg border mt-2"
+                        className="w-[180px] h-[110px] object-cover rounded-lg border mt-2"
                       />
                     )}
                   </>
@@ -185,17 +188,17 @@ export default function MenuAdminPage() {
                   <img
                     src={m.image}
                     alt={m.name}
-                    className="w-[160px] h-[96px] object-cover rounded-lg border"
+                    className="w-[180px] h-[110px] object-cover rounded-lg border"
                   />
                 ) : (
-                  <div className="w-[160px] h-[96px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
+                  <div className="w-[180px] h-[110px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
                     No Image
                   </div>
                 )}
               </div>
 
-              {/* 名前（min-w-0 がポイント） */}
-              <div className="min-w-0">
+              {/* 商品名 */}
+              <div className="min-w-0 break-words">
                 {editing ? (
                   <input
                     data-testid="inp-name"
@@ -205,7 +208,7 @@ export default function MenuAdminPage() {
                     className="w-full rounded-md border px-3 py-2"
                   />
                 ) : (
-                  <div className="font-semibold break-words">{m.name}</div>
+                  <div className="font-semibold">{m.name}</div>
                 )}
               </div>
 
@@ -286,7 +289,9 @@ export default function MenuAdminPage() {
             </div>
           );
         })}
-        {rows.length === 0 && <div className="p-4 text-slate-500">メニューがありません</div>}
+        {rows.length === 0 && (
+          <div className="p-4 text-slate-500">メニューがありません</div>
+        )}
       </div>
 
       <div className="text-right text-xs text-slate-500">
