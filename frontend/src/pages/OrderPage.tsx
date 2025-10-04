@@ -103,8 +103,8 @@ export default function OrderPage() {
   };
 
   return (
-    // important を付けて縦書き継承を確実に遮断
-    <div className="p-4 space-y-4 ![writing-mode:horizontal-tb]">
+    // 横書き + 器を広げる
+    <div className="p-4 space-y-4 w-full min-w-0 ![writing-mode:horizontal-tb]">
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       <TableBanner table={table} onClear={clear} />
 
@@ -114,6 +114,7 @@ export default function OrderPage() {
       {/* メニュー一覧（レスポンシブ列切替） */}
       <div
         className="
+          w-full min-w-0
           grid items-start justify-items-stretch
           grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5
           gap-4 sm:gap-5 md:gap-6
@@ -130,7 +131,6 @@ export default function OrderPage() {
         ))}
       </div>
 
-      {/* 合計と注文ボタン（下固定バー） */}
       <CartBar total={total} disabled={cart.length === 0} onSubmit={submitOrder} />
 
       {commentId !== null && (

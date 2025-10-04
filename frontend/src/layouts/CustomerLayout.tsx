@@ -4,9 +4,8 @@ import Container from "../components/layout/Container";
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   return (
-    // 横書きを最優先で強制
-    <div className="min-h-screen bg-gray-50 ![writing-mode:horizontal-tb]">
-      {/* お客様専用ヘッダー */}
+    // 横書き + 器が縮まないように
+    <div className="min-h-screen bg-gray-50 w-full min-w-0 ![writing-mode:horizontal-tb]">
       <header className="px-4 py-3 border-b bg-white">
         <nav className="flex gap-4 text-sm">
           <a href="/c/order">注文</a>
