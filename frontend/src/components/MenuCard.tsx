@@ -1,3 +1,4 @@
+// src/components/MenuCard.tsx
 import { useEffect, useState } from "react";
 import { isE2E } from "../test/e2eFlag";
 
@@ -148,12 +149,11 @@ export default function MenuCard({
         )}
       </div>
 
-      {/* タイトル・価格 */}
+      {/* タイトル・価格（在庫表示は削除） */}
       <div className="font-semibold truncate">{m.name}</div>
       <div className="text-slate-700">¥{m.price.toLocaleString()}</div>
-      <div className="text-xs text-slate-500">在庫: {Math.max(0, m.stock)}</div>
 
-      {/* 数量カウンター */}
+      {/* 数量カウンター（上限は内部で在庫値を使用） */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <button
@@ -165,7 +165,7 @@ export default function MenuCard({
           >
             −
           </button>
-          <span className="min-w-[28px] text-center text-sm">{qty}</span>
+        <span className="min-w-[28px] text-center text-sm">{qty}</span>
           <button
             aria-label="plus"
             data-testid="qty-plus"

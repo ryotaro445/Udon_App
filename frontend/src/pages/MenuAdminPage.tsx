@@ -1,3 +1,4 @@
+// src/pages/MenuAdminPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { fetchMenus, createMenu, deleteMenu, updateMenu, type Menu } from "../api/menus";
 
@@ -120,7 +121,11 @@ export default function MenuAdminPage() {
   );
 
   return (
-    <div className="max-w-6xl w-full min-w-0 mx-auto p-6 space-y-4 ![writing-mode:horizontal-tb]">
+    // React の inline style で横書きを“強制”
+    <div
+      className="max-w-6xl w-full min-w-0 mx-auto p-6 space-y-4"
+      style={{ writingMode: "horizontal-tb" }}
+    >
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">メニュー管理（スタッフ）</h1>
         <div className="flex gap-2">
@@ -158,15 +163,16 @@ export default function MenuAdminPage() {
           const editing = !!m._editing;
           const stock = (m as any).stock ?? 0;
           const validImg = (m.image || "").trim().startsWith("http");
-
           return (
             <div
               key={m.id}
               data-testid="menu-row"
-              className="grid grid-cols-[180px_1fr_120px_120px_auto] gap-8 items-start p-5"
+              // 画像192px、余白広め、上揃えで重なり防止
+              className="grid grid-cols-[192px_1fr_140px_140px_auto] gap-8 items-start p-4"
+              style={{ writingMode: "horizontal-tb" }}
             >
               {/* 画像 */}
-              <div className="shrink-0">
+              <div className="self-start w-[192px]">
                 {editing ? (
                   <>
                     <input
@@ -174,13 +180,13 @@ export default function MenuAdminPage() {
                       placeholder="画像URL"
                       value={m.image || ""}
                       onChange={(e) => setField(m.id, "image", e.target.value)}
-                      className="w-[180px] rounded-md border px-2 py-1 text-sm"
+                      className="w-[192px] rounded-md border px-2 py-1 text-sm"
                     />
                     {m.image && validImg && (
                       <img
                         src={m.image}
                         alt="preview"
-                        className="w-[180px] h-[110px] object-cover rounded-lg border mt-2"
+                        className="w-[192px] h-[108px] object-cover rounded-lg border mt-2"
                       />
                     )}
                   </>
@@ -188,17 +194,17 @@ export default function MenuAdminPage() {
                   <img
                     src={m.image}
                     alt={m.name}
-                    className="w-[180px] h-[110px] object-cover rounded-lg border"
+                    className="w-[192px] h-[108px] object-cover rounded-lg border"
                   />
                 ) : (
-                  <div className="w-[180px] h-[110px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
+                  <div className="w-[192px] h-[108px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
                     No Image
                   </div>
                 )}
               </div>
 
-              {/* 商品名 */}
-              <div className="min-w-0 break-words">
+              {/* 名前（min-w-0 でオーバーフロー抑止） */}
+              <div className="min-w-0">
                 {editing ? (
                   <input
                     data-testid="inp-name"
@@ -208,7 +214,7 @@ export default function MenuAdminPage() {
                     className="w-full rounded-md border px-3 py-2"
                   />
                 ) : (
-                  <div className="font-semibold">{m.name}</div>
+                  <div className="font-semibold break-words">{m.name}</div>
                 )}
               </div>
 
@@ -289,9 +295,7 @@ export default function MenuAdminPage() {
             </div>
           );
         })}
-        {rows.length === 0 && (
-          <div className="p-4 text-slate-500">メニューがありません</div>
-        )}
+        {rows.length === 0 && <div className="p-4 text-slate-500">メニューがありません</div>}
       </div>
 
       <div className="text-right text-xs text-slate-500">
