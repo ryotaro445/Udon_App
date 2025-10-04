@@ -1,11 +1,10 @@
-// src/layouts/CustomerLayout.tsx
 import React from "react";
 import NoticeBar from "../components/NoticeBar";
 import Container from "../components/layout/Container";
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-50 w-full min-w-0 [writing-mode:horizontal-tb]!">
+    <div className="min-h-screen bg-gray-50 ![writing-mode:horizontal-tb]">
       <header className="px-4 py-3 border-b bg-white">
         <nav className="flex gap-4 text-sm">
           <a href="/c/order">注文</a>
@@ -14,7 +13,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         </nav>
       </header>
       <NoticeBar />
-      <main className="py-6 w-full min-w-0">
+      <main className="py-6">
         <Container>{children}</Container>
       </main>
     </div>

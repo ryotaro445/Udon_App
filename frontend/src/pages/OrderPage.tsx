@@ -103,31 +103,27 @@ export default function OrderPage() {
   };
 
   return (
-    // 横書き + 器を広げる
-    <div className="p-4 space-y-4 w-full min-w-0 ![writing-mode:horizontal-tb]">
+    <div className="p-4 space-y-4 ![writing-mode:horizontal-tb]">
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       <TableBanner table={table} onClear={clear} />
 
       {loading && <div>読み込み中…</div>}
       {error && <div className="text-red-600">{error}</div>}
 
-      {/* メニュー一覧（レスポンシブ列切替） */}
-     <div
-        className="
-          w-full min-w-0
-          grid items-start justify-items-stretch
-          grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5
-          gap-4 sm:gap-5 md:gap-6
-        "
-      >
+      {/* 12 カラム格子にしてカードで分割数を決める */}
+      <div className="grid min-w-0 grid-cols-12 gap-4 sm:gap-5 md:gap-6">
         {menus.map((m) => (
-          <MenuCard
+          <div
             key={m.id}
-            m={m}
-            onAdd={onAdd}
-            onOpenComment={(id) => setCommentId(id)}
-            inCart={cart.find((c) => c.menuId === m.id)?.qty ?? 0}
-          />
+            className="col-span-12 sm:col-span-6 md:col-span-4 xl:col-span-3 2xl:col-span-2"
+          >
+            <MenuCard
+              m={m}
+              onAdd={onAdd}
+              onOpenComment={(id) => setCommentId(id)}
+              inCart={cart.find((c) => c.menuId === m.id)?.qty ?? 0}
+            />
+          </div>
         ))}
       </div>
 
