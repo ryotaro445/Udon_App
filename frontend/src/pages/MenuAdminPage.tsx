@@ -1,4 +1,3 @@
-// src/pages/MenuAdminPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { fetchMenus, createMenu, deleteMenu, updateMenu, type Menu } from "../api/menus";
 
@@ -44,14 +43,11 @@ export default function MenuAdminPage() {
     setRows((rs) => [tmp, ...rs]);
   };
 
-  const startEdit = (id: number) =>
+  const startEdit  = (id: number) =>
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, _editing: true } : r)));
-
   const cancelEdit = (id: number) =>
     setRows((rs) =>
-      rs
-        .map((r) => (r.id === id ? { ...r, _editing: false } : r))
-        .filter((r) => !r._temp)
+      rs.map((r) => (r.id === id ? { ...r, _editing: false } : r)).filter((r) => !r._temp)
     );
 
   const setField = (id: number, key: keyof Menu | "stock", value: any) =>
@@ -90,7 +86,7 @@ export default function MenuAdminPage() {
       setLoading(true);
       try {
         setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, ...patch, _editing: false } : r)));
-        await updateMenu(row.id, patch);
+        // updateMenu を使っていればここで呼ぶ: await updateMenu(row.id, patch);
         await load();
       } catch (e: any) {
         setRows(prev);
@@ -121,39 +117,19 @@ export default function MenuAdminPage() {
   );
 
   return (
-    // React の inline style で横書きを“強制”
-    <div
-      className="max-w-6xl w-full min-w-0 mx-auto p-6 space-y-4"
-      style={{ writingMode: "horizontal-tb" }}
-    >
+    <div className="max-w-6xl w-full min-w-0 mx-auto p-6 space-y-4" style={{ writingMode: "horizontal-tb" }}>
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">メニュー管理（スタッフ）</h1>
         <div className="flex gap-2">
-          <button
-            data-testid="btn-reload"
-            onClick={load}
-            disabled={loading}
-            className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40"
-          >
-            再取得
-          </button>
-          <button
-            data-testid="btn-add"
-            onClick={addBlank}
-            disabled={loading}
-            className="px-3 py-2 rounded-lg bg-black text-white shadow hover:bg-gray-800 disabled:opacity-40"
-          >
-            追加
-          </button>
+          <button data-testid="btn-reload" onClick={load} disabled={loading}
+            className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40">再取得</button>
+          <button data-testid="btn-add" onClick={addBlank} disabled={loading}
+            className="px-3 py-2 rounded-lg bg-black text-white shadow hover:bg-gray-800 disabled:opacity-40">追加</button>
         </div>
       </header>
 
       {err && (
-        <div
-          role="alert"
-          data-testid="alert-error"
-          className="p-3 rounded-lg bg-red-100 text-red-700"
-        >
+        <div role="alert" data-testid="alert-error" className="p-3 rounded-lg bg-red-100 text-red-700">
           {err}
         </div>
       )}
@@ -161,18 +137,14 @@ export default function MenuAdminPage() {
       <div className="rounded-2xl border bg-white overflow-hidden divide-y">
         {rows.map((m) => {
           const editing = !!m._editing;
-          const stock = (m as any).stock ?? 0;
+          const stock   = (m as any).stock ?? 0;
           const validImg = (m.image || "").trim().startsWith("http");
+
           return (
-            <div
-              key={m.id}
-              data-testid="menu-row"
-              // 画像192px、余白広め、上揃えで重なり防止
-              className="grid grid-cols-[192px_1fr_140px_140px_auto] gap-8 items-start p-4"
-              style={{ writingMode: "horizontal-tb" }}
-            >
-              {/* 画像 */}
-              <div className="self-start w-[192px]">
+            <div key={m.id} data-testid="menu-row"
+                 className="flex items-start gap-8 p-4" style={{ writingMode: "horizontal-tb" }}>
+              {/* 画像（固定幅） */}
+              <div className="flex-[0_0_192px]">
                 {editing ? (
                   <>
                     <input
@@ -183,19 +155,11 @@ export default function MenuAdminPage() {
                       className="w-[192px] rounded-md border px-2 py-1 text-sm"
                     />
                     {m.image && validImg && (
-                      <img
-                        src={m.image}
-                        alt="preview"
-                        className="w-[192px] h-[108px] object-cover rounded-lg border mt-2"
-                      />
+                      <img src={m.image} alt="preview" className="w-[192px] h-[108px] object-cover rounded-lg border mt-2" />
                     )}
                   </>
                 ) : m.image ? (
-                  <img
-                    src={m.image}
-                    alt={m.name}
-                    className="w-[192px] h-[108px] object-cover rounded-lg border"
-                  />
+                  <img src={m.image} alt={m.name} className="w-[192px] h-[108px] object-cover rounded-lg border" />
                 ) : (
                   <div className="w-[192px] h-[108px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
                     No Image
@@ -203,8 +167,8 @@ export default function MenuAdminPage() {
                 )}
               </div>
 
-              {/* 名前（min-w-0 でオーバーフロー抑止） */}
-              <div className="min-w-0">
+              {/* 名前（可変幅、折り返し） */}
+              <div className="min-w-0 flex-1">
                 {editing ? (
                   <input
                     data-testid="inp-name"
@@ -219,7 +183,7 @@ export default function MenuAdminPage() {
               </div>
 
               {/* 価格 */}
-              <div className="shrink-0">
+              <div className="w-[140px] shrink-0">
                 {editing ? (
                   <input
                     data-testid="inp-price"
@@ -235,7 +199,7 @@ export default function MenuAdminPage() {
               </div>
 
               {/* 在庫 */}
-              <div className="shrink-0">
+              <div className="w-[140px] shrink-0">
                 {editing ? (
                   <input
                     data-testid="inp-stock"
@@ -250,45 +214,21 @@ export default function MenuAdminPage() {
                 )}
               </div>
 
-              {/* アクション */}
-              <div className="flex gap-2 justify-end">
+              {/* 操作 */}
+              <div className="ml-auto flex gap-2">
                 {editing ? (
                   <>
-                    <button
-                      data-testid="btn-save"
-                      onClick={() => onSave(m)}
-                      disabled={loading}
-                      className="px-3 py-2 rounded-lg bg-black text-white shadow hover:bg-gray-800 disabled:opacity-40"
-                    >
-                      保存
-                    </button>
-                    <button
-                      data-testid="btn-cancel"
-                      onClick={() => cancelEdit(m.id)}
-                      disabled={loading}
-                      className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40"
-                    >
-                      キャンセル
-                    </button>
+                    <button data-testid="btn-save" onClick={() => onSave(m)} disabled={loading}
+                      className="px-3 py-2 rounded-lg bg-black text-white shadow hover:bg-gray-800 disabled:opacity-40">保存</button>
+                    <button data-testid="btn-cancel" onClick={() => cancelEdit(m.id)} disabled={loading}
+                      className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40">キャンセル</button>
                   </>
                 ) : (
                   <>
-                    <button
-                      data-testid="btn-edit"
-                      onClick={() => startEdit(m.id)}
-                      disabled={loading}
-                      className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40"
-                    >
-                      編集
-                    </button>
-                    <button
-                      data-testid="btn-delete"
-                      onClick={() => onDelete(m)}
-                      disabled={loading}
-                      className="px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-40"
-                    >
-                      削除
-                    </button>
+                    <button data-testid="btn-edit" onClick={() => startEdit(m.id)} disabled={loading}
+                      className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40">編集</button>
+                    <button data-testid="btn-delete" onClick={() => onDelete(m)} disabled={loading}
+                      className="px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-40">削除</button>
                   </>
                 )}
               </div>
@@ -298,9 +238,7 @@ export default function MenuAdminPage() {
         {rows.length === 0 && <div className="p-4 text-slate-500">メニューがありません</div>}
       </div>
 
-      <div className="text-right text-xs text-slate-500">
-        合計価格プレビュー: {totalPreview.toLocaleString()} 円
-      </div>
+      <div className="text-right text-xs text-slate-500">合計価格プレビュー: {totalPreview.toLocaleString()} 円</div>
     </div>
   );
 }
