@@ -103,7 +103,8 @@ export default function OrderPage() {
   };
 
   return (
-    <div className="p-4 space-y-4 [writing-mode:horizontal-tb]">
+    // important を付けて縦書き継承を確実に遮断
+    <div className="p-4 space-y-4 ![writing-mode:horizontal-tb]">
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       <TableBanner table={table} onClear={clear} />
 
