@@ -6,16 +6,15 @@ import Container from "../components/layout/Container";
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* 従業員専用ヘッダー */}
       <header className="px-4 py-3 border-b bg-white">
-        <nav className="flex gap-3 text-base">
+        <nav className="flex gap-4 text-base">
           <NavLink
             to="/s/menu-admin"
             className={({ isActive }) =>
-              `px-3 py-1.5 rounded-md border ${
+              `px-4 py-2 rounded-lg border font-semibold transition ${
                 isActive
-                  ? "bg-sky-600 text-white border-sky-600"
-                  : "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                  ? "bg-[#0369a1] text-white border-[#0369a1]"
+                  : "bg-white text-[#0369a1] border-[#0369a1] hover:bg-sky-50"
               }`
             }
           >
@@ -24,10 +23,10 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           <NavLink
             to="/s/analytics"
             className={({ isActive }) =>
-              `px-3 py-1.5 rounded-md border ${
+              `px-4 py-2 rounded-lg border font-semibold transition ${
                 isActive
-                  ? "bg-sky-600 text-white border-sky-600"
-                  : "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                  ? "bg-[#0369a1] text-white border-[#0369a1]"
+                  : "bg-white text-[#0369a1] border-[#0369a1] hover:bg-sky-50"
               }`
             }
           >
@@ -36,10 +35,10 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           <NavLink
             to="/s/notices"
             className={({ isActive }) =>
-              `px-3 py-1.5 rounded-md border ${
+              `px-4 py-2 rounded-lg border font-semibold transition ${
                 isActive
-                  ? "bg-sky-600 text-white border-sky-600"
-                  : "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                  ? "bg-[#0369a1] text-white border-[#0369a1]"
+                  : "bg-white text-[#0369a1] border-[#0369a1] hover:bg-sky-50"
               }`
             }
           >
