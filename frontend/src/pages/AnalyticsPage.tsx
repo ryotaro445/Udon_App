@@ -13,7 +13,7 @@ import MenuDailyChart from "../components/MenuDailyChart";
 import MenuHourlyChart from "../components/MenuHourlyChart";
 import { useNavigate } from "react-router-dom";
 import { useMode } from "../context/ModeCtx";
-import StaffTabs from "../components/StaffTabs";
+
 
 type Tab = "daily" | "hourly" | "menu";
 type MenuView = "daily" | "hourly";
