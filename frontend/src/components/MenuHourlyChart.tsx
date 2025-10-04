@@ -1,5 +1,16 @@
+// src/components/MenuHourlyChart.tsx
 import React, { useEffect, useState } from "react";
-import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid
+} from "recharts";
 import { fetchMenuHourly, type MenuHourlyBucket, type MenuTotal } from "../api/analytics";
 
 type Point = { hour: number; orders: number; amount: number };
@@ -26,8 +37,15 @@ export default function MenuHourlyChart({ picked, days = 7 }: { picked: MenuTota
           <YAxis yAxisId="right" orientation="right" />
           <Tooltip labelFormatter={(v) => hourLabel(Number(v))} />
           <Legend />
-          <Bar  yAxisId="right" dataKey="amount" name="売上金額" />
-          <Line yAxisId="left"  dataKey="orders" name="注文件数" />
+          {/* 青系に統一 */}
+          <defs>
+            <linearGradient id="salesBlueHourly" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#38bdf8" />
+              <stop offset="100%" stopColor="#0284c7" />
+            </linearGradient>
+          </defs>
+          <Bar  yAxisId="right" dataKey="amount" name="売上金額" fill="url(#salesBlueHourly)" />
+          <Line yAxisId="left"  dataKey="orders" name="注文件数" stroke="#0369a1" strokeWidth={2.5} dot={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

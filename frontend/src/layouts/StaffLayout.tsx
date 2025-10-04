@@ -8,12 +8,14 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen bg-slate-50">
       {/* 従業員専用ヘッダー（お客様向けリンクは一切出さない） */}
       <header className="px-4 py-3 border-b bg-white">
-        <nav className="flex gap-4 text-sm">
+        <nav className="flex gap-3 text-base">
           <NavLink
             to="/s/menu-admin"
             className={({ isActive }) =>
-              `px-2 py-1 rounded ${
-                isActive ? "bg-slate-100 text-slate-900" : "text-slate-700 hover:underline"
+              `px-3 py-1.5 rounded-md border ${
+                isActive
+                  ? "border-sky-400 bg-sky-100 text-sky-800"
+                  : "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
               }`
             }
           >
@@ -22,8 +24,10 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           <NavLink
             to="/s/analytics"
             className={({ isActive }) =>
-              `px-2 py-1 rounded ${
-                isActive ? "bg-slate-100 text-slate-900" : "text-slate-700 hover:underline"
+              `px-3 py-1.5 rounded-md border ${
+                isActive
+                  ? "border-sky-400 bg-sky-100 text-sky-800"
+                  : "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
               }`
             }
           >
@@ -32,8 +36,10 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           <NavLink
             to="/s/notices"
             className={({ isActive }) =>
-              `px-2 py-1 rounded ${
-                isActive ? "bg-slate-100 text-slate-900" : "text-slate-700 hover:underline"
+              `px-3 py-1.5 rounded-md border ${
+                isActive
+                  ? "border-sky-400 bg-sky-100 text-sky-800"
+                  : "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
               }`
             }
           >
