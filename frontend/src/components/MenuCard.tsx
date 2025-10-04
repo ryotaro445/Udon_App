@@ -156,7 +156,8 @@ export default function MenuCard({
           <button
             data-testid="open-comment"
             onClick={() => onOpenComment(m.id)}
-            className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50"
+            className="px-3 py-2 rounded-lg border font-semibold transition
+                      bg-white text-[#0369a1] border-[#0369a1] hover:bg-sky-50"
           >
             コメント
           </button>
