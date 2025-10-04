@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchMenus, createMenu, deleteMenu, updateMenu, type Menu } from "../api/menus";
-import StaffTabs from "../components/StaffTabs";
+
 
 type Row = Menu & { _editing?: boolean; _temp?: boolean };
 

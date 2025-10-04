@@ -13,6 +13,10 @@ export type MenuForCart = { id: number; price: number; stock?: number };
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
+// ★ カード幅を固定（以前の見た目に近い感じ）
+const CARD_W = "w-48 md:w-56"; // 192px / 224px
+const IMG_H = "h-28 md:h-32";
+
 export default function MenuCard({
   m,
   onAdd,
@@ -37,7 +41,7 @@ export default function MenuCard({
     localStorage.setItem("userToken", token);
   }
 
-  // 初期ロード：count と自分の liked 状態を並列取得
+  // 初期ロード：count と自分の liked 状態
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -66,23 +70,19 @@ export default function MenuCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.id]);
 
-  // 数量カウンター
   const maxQty = Number.isFinite(m.stock) ? Math.max(0, m.stock) : Infinity;
   const soldOut = maxQty <= 0;
-
   const inc = () => setQty((v) => (v < maxQty ? v + 1 : v));
   const dec = () => setQty((v) => Math.max(0, v - 1));
 
-  // 追加
   const addNow = () => {
     const useQty = qty > 0 ? qty : 1;
     if (soldOut) return;
-    if (useQty > maxQty) return; // 念のためガード
+    if (useQty > maxQty) return;
     onAdd?.({ id: m.id, price: m.price, stock: m.stock }, useQty);
     setQty(isE2E() ? 1 : 0);
   };
 
-  // いいね（トグル）
   const toggleLike = async () => {
     if (busy) return;
     setBusy(true);
@@ -92,10 +92,7 @@ export default function MenuCard({
         setLikeCount((v) => v + 1);
         const r = await fetch(`${API_BASE}/api/menus/${m.id}/like`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-User-Token": token,
-          },
+          headers: { "Content-Type": "application/json", "X-User-Token": token },
         });
         if (r.ok) {
           const js = await r.json();
@@ -131,7 +128,8 @@ export default function MenuCard({
       role="article"
       aria-label={m.name}
       data-testid="menu-card"
-      className="rounded-2xl bg-white shadow p-3 flex flex-col gap-2 border"
+      // ★ 幅固定 + shrink-0 で横幅を保つ。親の flex/grid に影響されても伸びない
+      className={`${CARD_W} shrink-0 rounded-2xl bg-white shadow p-3 flex flex-col gap-2 border`}
     >
       {/* 画像 */}
       <div className="relative">
@@ -139,10 +137,12 @@ export default function MenuCard({
           <img
             src={m.image}
             alt={m.name}
-            className="w-full h-28 object-cover rounded-xl border"
+            className={`w-full ${IMG_H} object-cover rounded-xl border`}
           />
         ) : (
-          <div className="w-full h-28 grid place-items-center rounded-xl border border-dashed text-slate-400">
+          <div
+            className={`w-full ${IMG_H} grid place-items-center rounded-xl border border-dashed text-slate-400`}
+          >
             No Image
           </div>
         )}
@@ -154,7 +154,7 @@ export default function MenuCard({
       </div>
 
       {/* タイトル・価格 */}
-      <div className="font-semibold">{m.name}</div>
+      <div className="font-semibold truncate">{m.name}</div>
       <div className="text-slate-700">¥{m.price.toLocaleString()}</div>
       <div className="text-xs text-slate-500">在庫: {Math.max(0, m.stock)}</div>
 
