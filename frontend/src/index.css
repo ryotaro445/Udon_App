@@ -1,6 +1,9 @@
 /* frontend/src/index.css */
 @import "tailwindcss";
 
+/* 最上位で横書きを強制。幅も確保しておく */
 :root, html, body, #root {
   writing-mode: horizontal-tb !important;
+  width: 100%;
+  min-width: 0;
 }

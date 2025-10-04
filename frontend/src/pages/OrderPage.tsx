@@ -112,7 +112,7 @@ export default function OrderPage() {
       {error && <div className="text-red-600">{error}</div>}
 
       {/* メニュー一覧（レスポンシブ列切替） */}
-      <div
+     <div
         className="
           w-full min-w-0
           grid items-start justify-items-stretch
