@@ -5,7 +5,7 @@ import MenuCard, { type Menu, type MenuForCart } from "../components/MenuCard";
 import MenuDetail from "../components/MenuDetail";
 import Toast from "../components/Toast";
 import { fetchMenus } from "../api/menus";
-import CartBar from "../components/CartBar";
+import CartBar, { type CartViewItem } from "../components/CartBar";
 
 type CartItem = { menuId: number; qty: number };
 const API = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
@@ -46,12 +46,7 @@ export default function OrderPage() {
     return () => clearInterval(t);
   }, []);
 
-  const persist = (next: CartItem[]) => {
-    const stored = next.filter((x) => x.qty > 0);
-    localStorage.setItem("cart", JSON.stringify(stored));
-    return stored;
-  };
-
+  // 追加（カードの＋／−は削除済み。ここでは Add のみ許可）
   const onAdd = (m: MenuForCart, addQty: number) => {
     if (typeof m.stock === "number" && m.stock <= 0) {
       setToast("在庫がありません");
@@ -65,59 +60,66 @@ export default function OrderPage() {
     setCart((prev) => {
       const idx = prev.findIndex((x) => x.menuId === m.id);
       const next = [...prev];
-      if (idx >= 0) next[idx] = { ...next[idx], qty: Math.max(0, next[idx].qty + addQty) };
+      if (idx >= 0) next[idx] = { ...next[idx], qty: next[idx].qty + addQty };
       else next.push({ menuId: m.id, qty: addQty });
-      return persist(next);
+      const stored = next.filter((x) => x.qty > 0);
+      localStorage.setItem("cart", JSON.stringify(stored));
+      return stored;
     });
   };
 
-  const inc = (menuId: number) => {
-    const m = menus.find((x) => x.id === menuId);
+  // カート操作（合計バー側の＋／−／取消）
+  const inc = (id: number) =>
     setCart((prev) => {
+      const m = menus.find((x) => x.id === id);
       const next = prev.map((c) =>
-        c.menuId === menuId ? { ...c, qty: Math.min((m?.stock ?? Infinity), c.qty + 1) } : c
+        c.menuId === id
+          ? {
+              ...c,
+              qty: Math.min(
+                c.qty + 1,
+                typeof m?.stock === "number" ? m.stock : Number.POSITIVE_INFINITY
+              ),
+            }
+          : c
       );
-      return persist(next);
+      localStorage.setItem("cart", JSON.stringify(next));
+      return next;
     });
-  };
 
-  const dec = (menuId: number) => {
+  const dec = (id: number) =>
     setCart((prev) => {
       const next = prev
-        .map((c) => (c.menuId === menuId ? { ...c, qty: Math.max(0, c.qty - 1) } : c))
+        .map((c) => (c.menuId === id ? { ...c, qty: Math.max(0, c.qty - 1) } : c))
         .filter((c) => c.qty > 0);
-    return persist(next);
+      localStorage.setItem("cart", JSON.stringify(next));
+      return next;
     });
-  };
 
-  const remove = (menuId: number) => {
-    setCart((prev) => persist(prev.filter((c) => c.menuId !== menuId)));
-  };
+  const remove = (id: number) =>
+    setCart((prev) => {
+      const next = prev.filter((c) => c.menuId !== id);
+      localStorage.setItem("cart", JSON.stringify(next));
+      return next;
+    });
+
+  const itemsForCart: CartViewItem[] = useMemo(() => {
+    return cart
+      .map((c) => {
+        const m = menus.find((x) => x.id === c.menuId);
+        if (!m) return null;
+        return { id: m.id, name: m.name, price: m.price, qty: c.qty };
+      })
+      .filter(Boolean) as CartViewItem[];
+  }, [cart, menus]);
 
   const total = useMemo(
-    () =>
-      cart.reduce((sum, it) => {
-        const m = menus.find((x) => x.id === it.menuId);
-        return sum + (m ? m.price * it.qty : 0);
-      }, 0),
-    [cart, menus]
-  );
-
-  const viewItems = useMemo(
-    () =>
-      cart
-        .map((c) => {
-          const m = menus.find((x) => x.id === c.menuId);
-          if (!m) return null;
-          return { menuId: c.menuId, name: m.name, price: m.price, qty: c.qty };
-        })
-        .filter(Boolean) as { menuId: number; name: string; price: number; qty: number }[],
-    [cart, menus]
+    () => itemsForCart.reduce((sum, it) => sum + it.price * it.qty, 0),
+    [itemsForCart]
   );
 
   const submitOrder = async () => {
     if (cart.length === 0) return;
-
     try {
       const res = await fetch(`${API}/api/orders`, {
         method: "POST",
@@ -131,7 +133,6 @@ export default function OrderPage() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.detail ?? "注文に失敗しました");
       }
-
       setToast("注文を受け付けました");
       setCart([]);
       localStorage.setItem("cart", JSON.stringify([]));
@@ -142,20 +143,17 @@ export default function OrderPage() {
   };
 
   return (
-    <div className="p-4 space-y-4 ![writing-mode:horizontal-tb]">
+    <div className="p-4 space-y-4" style={{ writingMode: "horizontal-tb" }}>
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       <TableBanner table={table} onClear={clear} />
 
       {loading && <div>読み込み中…</div>}
       {error && <div className="text-red-600">{error}</div>}
 
-      {/* 12カラムグリッド */}
+      {/* 12 カラム格子（カード側に数量UIなし） */}
       <div className="grid min-w-0 grid-cols-12 gap-4 sm:gap-5 md:gap-6">
         {menus.map((m) => (
-          <div
-            key={m.id}
-            className="col-span-12 sm:col-span-6 md:col-span-4 xl:col-span-3 2xl:col-span-2"
-          >
+          <div key={m.id} className="col-span-12 sm:col-span-6 md:col-span-4 xl:col-span-3 2xl:col-span-2">
             <MenuCard
               m={m}
               onAdd={onAdd}
@@ -166,15 +164,14 @@ export default function OrderPage() {
         ))}
       </div>
 
-      {/* 合計バー（注文一覧＋数量コントロール） */}
       <CartBar
+        items={itemsForCart}
         total={total}
-        disabled={cart.length === 0}
-        items={viewItems}
         onInc={inc}
         onDec={dec}
         onRemove={remove}
         onSubmit={submitOrder}
+        disabled={itemsForCart.length === 0}
       />
 
       {commentId !== null && (
