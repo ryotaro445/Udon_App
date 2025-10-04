@@ -1,20 +1,24 @@
+// src/components/CartBar.tsx
 import React from "react";
 
-type Props = {
+export default function CartBar({
+  total,
+  disabled,
+  onSubmit,
+}: {
   total: number;
   disabled: boolean;
   onSubmit: () => void;
-};
-
-export default function CartBar({ total, disabled, onSubmit }: Props) {
+}) {
   return (
-    <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t shadow-lg p-4 flex justify-between items-center">
-      <div className="text-lg font-bold">合計: ¥{total.toLocaleString()}</div>
+    <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-4 py-3 flex items-center gap-4">
+      <div className="text-lg font-semibold">
+        合計: ¥{new Intl.NumberFormat("ja-JP").format(total)}
+      </div>
       <button
-        disabled={disabled}
         onClick={onSubmit}
-        className="px-5 py-2 rounded-lg bg-black text-white font-semibold shadow
-                   disabled:opacity-40 hover:bg-gray-800"
+        disabled={disabled}
+        className="ml-auto px-4 py-2 rounded-lg bg-black text-white font-semibold disabled:opacity-40 hover:bg-gray-800"
       >
         注文を確定
       </button>

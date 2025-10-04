@@ -13,18 +13,21 @@ export type MenuForCart = { id: number; price: number; stock?: number };
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
-// ★ カード幅を固定（以前の見た目に近い感じ）
-const CARD_W = "w-48 md:w-56"; // 192px / 224px
+// 横幅を固定化（以前の見た目に近い）
+const CARD_W = "w-[208px] min-w-[208px] max-w-[208px]"; // 208pxでロック
 const IMG_H = "h-28 md:h-32";
 
 export default function MenuCard({
   m,
   onAdd,
   onOpenComment,
+  // ← inCart を受けられるようにしておく（未使用でも型エラー回避）
+  inCart,
 }: {
   m: Menu;
   onAdd?: (m: MenuForCart, qty: number) => void;
   onOpenComment?: (id: number) => void;
+  inCart?: number;
 }) {
   const [qty, setQty] = useState<number>(isE2E() ? 1 : 0);
   const [likeCount, setLikeCount] = useState<number>(0);
@@ -35,9 +38,10 @@ export default function MenuCard({
   let token = localStorage.getItem("userToken") ?? "";
   if (!token) {
     const fallback = Math.random().toString(36).slice(2);
-    token = (globalThis.crypto?.randomUUID?.() as string | undefined)
-      ? `DEMO-${crypto.randomUUID()}`
-      : `DEMO-${fallback}`;
+    token =
+      (globalThis.crypto?.randomUUID?.() as string | undefined)
+        ? `DEMO-${crypto.randomUUID()}`
+        : `DEMO-${fallback}`;
     localStorage.setItem("userToken", token);
   }
 
@@ -60,18 +64,15 @@ export default function MenuCard({
           const js2 = await r2.json();
           setLiked(Boolean(js2?.liked));
         }
-      } catch {
-        /* noop */
-      }
+      } catch { /* noop */ }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.id]);
 
   const maxQty = Number.isFinite(m.stock) ? Math.max(0, m.stock) : Infinity;
   const soldOut = maxQty <= 0;
+
   const inc = () => setQty((v) => (v < maxQty ? v + 1 : v));
   const dec = () => setQty((v) => Math.max(0, v - 1));
 
@@ -128,8 +129,7 @@ export default function MenuCard({
       role="article"
       aria-label={m.name}
       data-testid="menu-card"
-      // ★ 幅固定 + shrink-0 で横幅を保つ。親の flex/grid に影響されても伸びない
-      className={`${CARD_W} shrink-0 rounded-2xl bg-white shadow p-3 flex flex-col gap-2 border`}
+      className={`${CARD_W} shrink-0 rounded-2xl bg-white shadow p-3 flex flex-col gap-2 border [writing-mode:horizontal-tb]`}
     >
       {/* 画像 */}
       <div className="relative">
@@ -140,9 +140,7 @@ export default function MenuCard({
             className={`w-full ${IMG_H} object-cover rounded-xl border`}
           />
         ) : (
-          <div
-            className={`w-full ${IMG_H} grid place-items-center rounded-xl border border-dashed text-slate-400`}
-          >
+          <div className={`w-full ${IMG_H} grid place-items-center rounded-xl border border-dashed text-slate-400`}>
             No Image
           </div>
         )}
@@ -166,8 +164,7 @@ export default function MenuCard({
             data-testid="qty-minus"
             onClick={dec}
             disabled={qty <= 0}
-            className="w-8 h-8 flex items-center justify-center rounded-md border bg-white text-xl
-                       disabled:opacity-40 hover:bg-gray-50"
+            className="w-8 h-8 flex items-center justify-center rounded-md border bg-white text-xl disabled:opacity-40 hover:bg-gray-50"
           >
             −
           </button>
@@ -177,8 +174,7 @@ export default function MenuCard({
             data-testid="qty-plus"
             onClick={inc}
             disabled={qty >= maxQty || soldOut}
-            className="w-8 h-8 flex items-center justify-center rounded-md border bg-white text-xl
-                       disabled:opacity-40 hover:bg-gray-50"
+            className="w-8 h-8 flex items-center justify-center rounded-md border bg-white text-xl disabled:opacity-40 hover:bg-gray-50"
           >
             ＋
           </button>
@@ -192,8 +188,7 @@ export default function MenuCard({
           data-testid="add"
           onClick={addNow}
           disabled={soldOut}
-          className="px-3 py-2 rounded-lg bg-black text-white font-semibold shadow
-                     hover:bg-gray-800 disabled:opacity-40"
+          className="px-3 py-2 rounded-lg bg-black text-white font-semibold shadow hover:bg-gray-800 disabled:opacity-40"
         >
           追加
         </button>
@@ -215,9 +210,7 @@ export default function MenuCard({
           disabled={busy}
           title={liked ? "いいねを取り消す" : "いいね"}
           aria-label="いいね"
-          className={`ml-auto px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40 ${
-            liked ? "bg-slate-100" : ""
-          }`}
+          className={`ml-auto px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40 ${liked ? "bg-slate-100" : ""}`}
         >
           {liked ? "💖" : "🤍"} {likeCount}
         </button>

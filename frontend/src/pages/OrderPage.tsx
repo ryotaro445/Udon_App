@@ -1,3 +1,4 @@
+// src/pages/OrderPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useTable } from "../context/TableCtx";
 import TableBanner from "../components/TableBanner";
@@ -8,7 +9,7 @@ import { fetchMenus } from "../api/menus";
 import CartBar from "../components/CartBar";
 
 type CartItem = { menuId: number; qty: number };
-const API = import.meta.env.VITE_API_BASE;
+const API = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
 export default function OrderPage() {
   const { table, clear } = useTable();
@@ -61,8 +62,9 @@ export default function OrderPage() {
       const next = [...prev];
       if (idx >= 0) next[idx] = { ...next[idx], qty: Math.max(0, next[idx].qty + addQty) };
       else next.push({ menuId: m.id, qty: addQty });
-      localStorage.setItem("cart", JSON.stringify(next.filter((x) => x.qty > 0)));
-      return next.filter((x) => x.qty > 0);
+      const stored = next.filter((x) => x.qty > 0);
+      localStorage.setItem("cart", JSON.stringify(stored));
+      return stored;
     });
   };
 
@@ -102,7 +104,7 @@ export default function OrderPage() {
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 [writing-mode:horizontal-tb]">
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       <TableBanner table={table} onClear={clear} />
 
@@ -110,7 +112,7 @@ export default function OrderPage() {
       {error && <div className="text-red-600">{error}</div>}
 
       {/* メニュー一覧 */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
+      <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(208px,1fr))] items-start">
         {menus.map((m) => (
           <MenuCard
             key={m.id}
