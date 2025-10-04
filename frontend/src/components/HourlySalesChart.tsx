@@ -1,4 +1,3 @@
-// src/components/HourlySalesChart.tsx
 import React, { useMemo } from "react";
 import {
   ResponsiveContainer,
@@ -35,7 +34,6 @@ export default function HourlySalesChart({
     [buckets]
   );
 
-  // ts(7006) 対策: 引数に型を付ける
   const tooltipFormatter = (value: number, name: string) =>
     name === "売上金額" ? jpy(value) : value;
   const labelFormatter = (label: string | number) => `${label} 台`;
@@ -44,7 +42,8 @@ export default function HourlySalesChart({
     <div className="w-full" style={{ height }}>
       <ResponsiveContainer>
         <ComposedChart data={chartData} margin={{ top: 12, right: 24, bottom: 12, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" />
+          {/* グリッドは控えめな色に */}
+          <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
           <XAxis dataKey="label" interval={0} angle={-20} dy={10} height={50} />
           <YAxis yAxisId="left" allowDecimals={false} />
           <YAxis
@@ -54,10 +53,28 @@ export default function HourlySalesChart({
           />
           <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
           <Legend />
-          {/* 売上金額: Bar（右軸）*/}
-          <Bar yAxisId="right" dataKey="amount" name="売上金額" />
-          {/* 注文件数: Line（左軸）*/}
-          <Line yAxisId="left" type="monotone" dataKey="count" name="注文件数" dot={false} strokeWidth={2} />
+
+          {/* ブルーグラデーションの定義 */}
+          <defs>
+            <linearGradient id="salesBlue" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#38bdf8" />
+              <stop offset="100%" stopColor="#0284c7" />
+            </linearGradient>
+          </defs>
+
+          {/* 売上金額: Bar（右軸） */}
+          <Bar yAxisId="right" dataKey="amount" name="売上金額" fill="url(#salesBlue)" />
+
+          {/* 注文件数: Line（左軸） */}
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="count"
+            name="注文件数"
+            dot={false}
+            strokeWidth={2.5}
+            stroke="#0369a1"
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

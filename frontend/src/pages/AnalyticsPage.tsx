@@ -60,19 +60,16 @@ export default function AnalyticsPage() {
 
   useEffect(() => { void load(); }, [tab, days]);
 
-  return (
+   return (
     <div className="p-6 max-w-6xl mx-auto space-y-4 [writing-mode:horizontal-tb]">
-   
-
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">売上分析</h1>
 
-        {/* 右上の操作群（全体 or メニュー別で内容切替） */}
         {tab !== "menu" ? (
           <div className="flex items-center gap-2">
             <select
               aria-label="range"
-              className="border rounded-md px-2 py-2"
+              className="border rounded-md px-2 py-2 border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400"
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
             >
@@ -82,21 +79,27 @@ export default function AnalyticsPage() {
               <option value={60}>60日</option>
             </select>
 
-            <div className="rounded-lg overflow-hidden border">
+            <div className="rounded-lg overflow-hidden border border-sky-700">
               <button
-                className={`px-3 py-2 ${tab === "daily" ? "bg-black text-white" : "hover:bg-slate-50"}`}
+                className={`px-4 py-2 ${tab === "daily"
+                  ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
+                  : "text-sky-700 hover:bg-sky-50"}`}
                 onClick={() => setTab("daily")}
               >
                 日別
               </button>
               <button
-                className={`px-3 py-2 ${tab === "hourly" ? "bg-black text-white" : "hover:bg-slate-50"}`}
+                className={`px-4 py-2 ${tab === "hourly"
+                  ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
+                  : "text-sky-700 hover:bg-sky-50"}`}
                 onClick={() => setTab("hourly")}
               >
                 時間別
               </button>
               <button
-                className={`px-3 py-2 ${tab === "menu" ? "bg-black text-white" : "hover:bg-slate-50"}`}
+                className={`px-4 py-2 ${tab === "menu"
+                  ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
+                  : "text-sky-700 hover:bg-sky-50"}`}
                 onClick={() => setTab("menu")}
               >
                 メニュー別
@@ -104,7 +107,8 @@ export default function AnalyticsPage() {
             </div>
 
             <button
-              className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40"
+              className="px-4 py-2 rounded-lg border border-sky-700 text-sky-700 bg-white
+                         hover:bg-sky-50 disabled:opacity-40"
               onClick={load}
               disabled={loading}
             >
@@ -115,7 +119,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center gap-2">
             <select
               aria-label="menu-days"
-              className="border rounded-md px-2 py-2"
+              className="border rounded-md px-2 py-2 border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400"
               value={menuView === "daily" ? menuDays : menuHourlyDays}
               onChange={(e) =>
                 menuView === "daily"
@@ -128,15 +132,19 @@ export default function AnalyticsPage() {
               <option value={30}>30日</option>
             </select>
 
-            <div className="rounded-lg overflow-hidden border">
+            <div className="rounded-lg overflow-hidden border border-sky-700">
               <button
-                className={`px-3 py-2 ${menuView === "daily" ? "bg-black text-white" : "hover:bg-slate-50"}`}
+                className={`px-4 py-2 ${menuView === "daily"
+                  ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
+                  : "text-sky-700 hover:bg-sky-50"}`}
                 onClick={() => setMenuView("daily")}
               >
                 日別（メニュー）
               </button>
               <button
-                className={`px-3 py-2 ${menuView === "hourly" ? "bg-black text-white" : "hover:bg-slate-50"}`}
+                className={`px-4 py-2 ${menuView === "hourly"
+                  ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
+                  : "text-sky-700 hover:bg-sky-50"}`}
                 onClick={() => setMenuView("hourly")}
               >
                 時間別（メニュー）
@@ -150,7 +158,6 @@ export default function AnalyticsPage() {
         <div className="p-2 rounded bg-red-100 text-red-700">{err}</div>
       )}
 
-      {/* 本体 */}
       {tab !== "menu" ? (
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           {loading && <div>読み込み中…</div>}

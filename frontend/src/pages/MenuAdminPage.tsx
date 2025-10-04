@@ -116,15 +116,31 @@ export default function MenuAdminPage() {
     [rows]
   );
 
+
+
   return (
     <div className="max-w-6xl w-full min-w-0 mx-auto p-6 space-y-4" style={{ writingMode: "horizontal-tb" }}>
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">メニュー管理（スタッフ）</h1>
         <div className="flex gap-2">
-          <button data-testid="btn-reload" onClick={load} disabled={loading}
-            className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40">再取得</button>
-          <button data-testid="btn-add" onClick={addBlank} disabled={loading}
-            className="px-3 py-2 rounded-lg bg-black text-white shadow hover:bg-gray-800 disabled:opacity-40">追加</button>
+          <button
+            data-testid="btn-reload"
+            onClick={load}
+            disabled={loading}
+            className="px-4 py-2 rounded-lg border border-sky-700 text-sky-700 bg-white
+                       hover:bg-sky-50 disabled:opacity-40"
+          >
+            再取得
+          </button>
+          <button
+            data-testid="btn-add"
+            onClick={addBlank}
+            disabled={loading}
+            className="px-4 py-2 rounded-lg border border-sky-700 bg-gradient-to-b from-sky-600 to-sky-700
+                       text-white shadow hover:from-sky-700 hover:to-sky-800 disabled:opacity-40"
+          >
+            追加
+          </button>
         </div>
       </header>
 
@@ -218,17 +234,41 @@ export default function MenuAdminPage() {
               <div className="ml-auto flex gap-2">
                 {editing ? (
                   <>
-                    <button data-testid="btn-save" onClick={() => onSave(m)} disabled={loading}
-                      className="px-3 py-2 rounded-lg bg-black text-white shadow hover:bg-gray-800 disabled:opacity-40">保存</button>
-                    <button data-testid="btn-cancel" onClick={() => cancelEdit(m.id)} disabled={loading}
-                      className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40">キャンセル</button>
+                    <button
+                      data-testid="btn-save"
+                      onClick={() => onSave(m)}
+                      disabled={loading}
+                      className="px-3 py-2 rounded-lg bg-black text-white shadow hover:bg-gray-800 disabled:opacity-40"
+                    >
+                      保存
+                    </button>
+                    <button
+                      data-testid="btn-cancel"
+                      onClick={() => cancelEdit(m.id)}
+                      disabled={loading}
+                      className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40"
+                    >
+                      キャンセル
+                    </button>
                   </>
                 ) : (
                   <>
-                    <button data-testid="btn-edit" onClick={() => startEdit(m.id)} disabled={loading}
-                      className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40">編集</button>
-                    <button data-testid="btn-delete" onClick={() => onDelete(m)} disabled={loading}
-                      className="px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-40">削除</button>
+                    <button
+                      data-testid="btn-edit"
+                      onClick={() => startEdit(m.id)}
+                      disabled={loading}
+                      className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40"
+                    >
+                      編集
+                    </button>
+                    <button
+                      data-testid="btn-delete"
+                      onClick={() => onDelete(m)}
+                      disabled={loading}
+                      className="px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-40"
+                    >
+                      削除
+                    </button>
                   </>
                 )}
               </div>
