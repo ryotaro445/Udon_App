@@ -16,7 +16,6 @@ export default function MenuAdminPage() {
       setRows(
         (data as Menu[]).map((m) => ({
           ...m,
-          // バックエンド表記ゆれを吸収
           stock: (m as any).stock ?? (m as any).quantity ?? (m as any).in_stock ?? 0,
         }))
       );
@@ -122,7 +121,7 @@ export default function MenuAdminPage() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl w-full min-w-0 p-6 space-y-4 ![writing-mode:horizontal-tb]">
+    <div className="max-w-6xl w-full min-w-0 mx-auto p-6 space-y-4 ![writing-mode:horizontal-tb]">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">メニュー管理（スタッフ）</h1>
         <div className="flex gap-2">
@@ -146,11 +145,7 @@ export default function MenuAdminPage() {
       </header>
 
       {err && (
-        <div
-          role="alert"
-          data-testid="alert-error"
-          className="p-3 rounded-lg bg-red-100 text-red-700"
-        >
+        <div role="alert" data-testid="alert-error" className="p-3 rounded-lg bg-red-100 text-red-700">
           {err}
         </div>
       )}
@@ -160,15 +155,15 @@ export default function MenuAdminPage() {
           const editing = !!m._editing;
           const stock = (m as any).stock ?? 0;
           const validImg = (m.image || "").trim().startsWith("http");
-
           return (
             <div
               key={m.id}
               data-testid="menu-row"
-              className="grid grid-cols-[144px_1fr_160px_160px_auto] gap-6 items-start p-5 [writing-mode:horizontal-tb]"
+              /* 画像を160pxに拡張。名前カラムは min-w-0 を付けてはみ出し防止 */
+              className="grid grid-cols-[160px_1fr_140px_140px_auto] gap-6 items-center p-4"
             >
               {/* 画像 */}
-              <div className="w-[144px]">
+              <div className="self-start">
                 {editing ? (
                   <>
                     <input
@@ -176,13 +171,13 @@ export default function MenuAdminPage() {
                       placeholder="画像URL"
                       value={m.image || ""}
                       onChange={(e) => setField(m.id, "image", e.target.value)}
-                      className="w-[144px] rounded-md border px-2 py-1 text-sm"
+                      className="w-[160px] rounded-md border px-2 py-1 text-sm"
                     />
                     {m.image && validImg && (
                       <img
                         src={m.image}
                         alt="preview"
-                        className="w-[144px] h-[96px] object-cover rounded-lg border mt-2"
+                        className="w-[160px] h-[96px] object-cover rounded-lg border mt-2"
                       />
                     )}
                   </>
@@ -190,17 +185,17 @@ export default function MenuAdminPage() {
                   <img
                     src={m.image}
                     alt={m.name}
-                    className="w-[144px] h-[96px] object-cover rounded-lg border"
+                    className="w-[160px] h-[96px] object-cover rounded-lg border"
                   />
                 ) : (
-                  <div className="w-[144px] h-[96px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
+                  <div className="w-[160px] h-[96px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
                     No Image
                   </div>
                 )}
               </div>
 
-              {/* 名前 */}
-              <div>
+              {/* 名前（min-w-0 がポイント） */}
+              <div className="min-w-0">
                 {editing ? (
                   <input
                     data-testid="inp-name"
@@ -210,14 +205,12 @@ export default function MenuAdminPage() {
                     className="w-full rounded-md border px-3 py-2"
                   />
                 ) : (
-                  <div className="font-semibold text-lg leading-tight break-words">
-                    {m.name}
-                  </div>
+                  <div className="font-semibold break-words">{m.name}</div>
                 )}
               </div>
 
               {/* 価格 */}
-              <div>
+              <div className="shrink-0">
                 {editing ? (
                   <input
                     data-testid="inp-price"
@@ -233,7 +226,7 @@ export default function MenuAdminPage() {
               </div>
 
               {/* 在庫 */}
-              <div>
+              <div className="shrink-0">
                 {editing ? (
                   <input
                     data-testid="inp-stock"
