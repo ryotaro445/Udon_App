@@ -13,16 +13,14 @@ export type MenuForCart = { id: number; price: number; stock?: number };
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
-// 横幅を固定化（以前の見た目に近い）
-const CARD_W = "w-[208px] min-w-[208px] max-w-[208px]"; // 208pxでロック
+// 画像の高さだけ固定（幅は親カラムに合わせる）
 const IMG_H = "h-28 md:h-32";
 
 export default function MenuCard({
   m,
   onAdd,
   onOpenComment,
-  // ← inCart を受けられるようにしておく（未使用でも型エラー回避）
-  inCart,
+  inCart, // 受け取りのみ（未使用でもOK）
 }: {
   m: Menu;
   onAdd?: (m: MenuForCart, qty: number) => void;
@@ -129,7 +127,8 @@ export default function MenuCard({
       role="article"
       aria-label={m.name}
       data-testid="menu-card"
-      className={`${CARD_W} shrink-0 rounded-2xl bg-white shadow p-3 flex flex-col gap-2 border [writing-mode:horizontal-tb]`}
+      // 幅は親のカラムにフィットさせる
+      className="w-full rounded-2xl bg-white shadow p-3 flex flex-col gap-2 border [writing-mode:horizontal-tb]"
     >
       {/* 画像 */}
       <div className="relative">

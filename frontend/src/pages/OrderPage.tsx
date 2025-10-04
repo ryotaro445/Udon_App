@@ -1,3 +1,4 @@
+// src/pages/OrderPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useTable } from "../context/TableCtx";
 import TableBanner from "../components/TableBanner";
@@ -110,9 +111,14 @@ export default function OrderPage() {
       {loading && <div>読み込み中…</div>}
       {error && <div className="text-red-600">{error}</div>}
 
-      {/* メニュー一覧（重なり解消：auto-fit + gap-6） */}
-      <div className="grid gap-6 items-start justify-items-stretch
-                      grid-cols-[repeat(auto-fit,minmax(208px,1fr))]">
+      {/* メニュー一覧（レスポンシブ列切替） */}
+      <div
+        className="
+          grid items-start justify-items-stretch
+          grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5
+          gap-4 sm:gap-5 md:gap-6
+        "
+      >
         {menus.map((m) => (
           <MenuCard
             key={m.id}
