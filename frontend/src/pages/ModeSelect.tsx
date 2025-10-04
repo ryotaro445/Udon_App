@@ -38,14 +38,11 @@ export default function ModeSelect() {
         className="w-full max-w-4xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm"
         aria-labelledby="mode-title"
       >
+        {/* 細かい説明テキストをすべて削除 */}
         <header className="px-8 pt-8 pb-6 text-center">
-          <p className="text-xs tracking-wide text-slate-500 dark:text-slate-400">モード選択</p>
-          <h1 id="mode-title" className="mt-1 text-3xl font-bold text-slate-900 dark:text-slate-100">
+          <h1 id="mode-title" className="text-3xl font-bold text-slate-900 dark:text-slate-100">
             利用モードを選択
           </h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            デモではどちらかを選んでお進みください
-          </p>
         </header>
 
         <div className="px-8 pb-8">
@@ -62,7 +59,7 @@ export default function ModeSelect() {
             >
               <div className="text-6xl mb-3" aria-hidden>🛎️</div>
               <div className="text-xl font-bold">お客様</div>
-              <div className="mt-2 text-sm opacity-80">注文・掲示板</div>
+              {/* 「注文・掲示板」削除 */}
             </button>
 
             <button
@@ -77,18 +74,11 @@ export default function ModeSelect() {
             >
               <div className="text-6xl mb-3" aria-hidden>🧑‍🍳</div>
               <div className="text-xl font-bold">従業員</div>
-              <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                メニュー編集・在庫・分析
-              </div>
+              {/* 「メニュー編集・在庫・分析」削除 */}
             </button>
           </div>
 
-          <div className="mt-8 rounded-xl bg-slate-50 dark:bg-slate-900/60 p-4 text-xs text-slate-600 dark:text-slate-400 text-center">
-            <p>※ 従業員モードはパスワード入力があります。</p>
-            <p className="mt-1">
-              環境変数 <code className="font-mono">VITE_STAFF_PASS</code> 未設定時は <code className="font-mono">admin</code>
-            </p>
-          </div>
+          {/* 下部の注意文（パスワード入力・環境変数）削除 */}
         </div>
       </section>
     </main>
