@@ -6,7 +6,7 @@ import Container from "../components/layout/Container";
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* 従業員専用ヘッダー（お客様向けリンクは一切出さない） */}
+      {/* 従業員専用ヘッダー */}
       <header className="px-4 py-3 border-b bg-white">
         <nav className="flex gap-3 text-base">
           <NavLink
@@ -14,7 +14,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
             className={({ isActive }) =>
               `px-3 py-1.5 rounded-md border ${
                 isActive
-                  ? "border-sky-400 bg-sky-100 text-sky-800"
+                  ? "bg-sky-600 text-white border-sky-600"
                   : "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
               }`
             }
@@ -26,7 +26,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
             className={({ isActive }) =>
               `px-3 py-1.5 rounded-md border ${
                 isActive
-                  ? "border-sky-400 bg-sky-100 text-sky-800"
+                  ? "bg-sky-600 text-white border-sky-600"
                   : "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
               }`
             }
@@ -38,7 +38,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
             className={({ isActive }) =>
               `px-3 py-1.5 rounded-md border ${
                 isActive
-                  ? "border-sky-400 bg-sky-100 text-sky-800"
+                  ? "bg-sky-600 text-white border-sky-600"
                   : "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
               }`
             }
