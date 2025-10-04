@@ -13,6 +13,7 @@ import MenuDailyChart from "../components/MenuDailyChart";
 import MenuHourlyChart from "../components/MenuHourlyChart";
 import { useNavigate } from "react-router-dom";
 import { useMode } from "../context/ModeCtx";
+import StaffTabs from "../components/StaffTabs";
 
 type Tab = "daily" | "hourly" | "menu";
 type MenuView = "daily" | "hourly";
@@ -21,7 +22,6 @@ export default function AnalyticsPage() {
   const { mode } = useMode();
   const navigate = useNavigate();
 
-  // ====== 全体タブ ======
   const [tab, setTab] = useState<Tab>("daily");
   const [days, setDays] = useState<number>(14);
   const [hourly, setHourly] = useState<HourlyBucket[]>([]);
@@ -29,13 +29,11 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // ====== メニュー別 ======
   const [picked, setPicked] = useState<MenuTotal | null>(null);
   const [menuView, setMenuView] = useState<MenuView>("daily");
-  const [menuDays, setMenuDays] = useState<number>(14);       // 日別
-  const [menuHourlyDays, setMenuHourlyDays] = useState<number>(7); // 時間別
+  const [menuDays, setMenuDays] = useState<number>(14);
+  const [menuHourlyDays, setMenuHourlyDays] = useState<number>(7);
 
-  // スタッフ以外は入れない
   useEffect(() => {
     const m = (mode || "").toUpperCase();
     if (m !== "STAFF") navigate("/mode", { replace: true });
@@ -64,6 +62,9 @@ export default function AnalyticsPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-4">
+      {/* タブ（等幅） */}
+      <StaffTabs />
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">売上分析</h1>
 
@@ -163,7 +164,6 @@ export default function AnalyticsPage() {
       ) : (
         <div className="space-y-4">
           <div className="rounded-2xl border bg-white p-4 shadow-sm">
-            {/* メニュー別 合計（クリックで選択） */}
             <MenuTotalsChart days={30} limit={50} onPickMenu={setPicked} />
             <div className="text-xs text-gray-500 mt-2">
               棒をクリックすると下段に「{menuView === "daily" ? "日別" : "時間別"}」推移を表示

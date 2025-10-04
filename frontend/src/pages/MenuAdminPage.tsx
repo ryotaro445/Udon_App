@@ -1,4 +1,3 @@
-// frontend/src/pages/MenuAdminPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { fetchMenus, createMenu, deleteMenu, updateMenu, type Menu } from "../api/menus";
 import StaffTabs from "../components/StaffTabs";
@@ -123,6 +122,7 @@ export default function MenuAdminPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-4">
+      {/* タブ（等幅） */}
       <StaffTabs />
 
       <header className="flex items-center justify-between">
@@ -148,11 +148,7 @@ export default function MenuAdminPage() {
       </header>
 
       {err && (
-        <div
-          role="alert"
-          data-testid="alert-error"
-          className="p-3 rounded-lg bg-red-100 text-red-700"
-        >
+        <div role="alert" data-testid="alert-error" className="p-3 rounded-lg bg-red-100 text-red-700">
           {err}
         </div>
       )}
@@ -163,11 +159,7 @@ export default function MenuAdminPage() {
           const stock = (m as any).stock ?? 0;
           const validImg = (m.image || "").trim().startsWith("http");
           return (
-            <div
-              key={m.id}
-              data-testid="menu-row"
-              className="grid grid-cols-[112px_1fr_140px_140px_auto] gap-4 items-center p-4"
-            >
+            <div key={m.id} data-testid="menu-row" className="grid grid-cols-[112px_1fr_140px_140px_auto] gap-4 items-center p-4">
               {/* 画像 */}
               <div>
                 {editing ? (
@@ -180,19 +172,11 @@ export default function MenuAdminPage() {
                       className="w-[112px] rounded-md border px-2 py-1 text-sm"
                     />
                     {m.image && validImg && (
-                      <img
-                        src={m.image}
-                        alt="preview"
-                        className="w-[112px] h-[72px] object-cover rounded-lg border mt-2"
-                      />
+                      <img src={m.image} alt="preview" className="w-[112px] h-[72px] object-cover rounded-lg border mt-2" />
                     )}
                   </>
                 ) : m.image ? (
-                  <img
-                    src={m.image}
-                    alt={m.name}
-                    className="w-[112px] h-[72px] object-cover rounded-lg border"
-                  />
+                  <img src={m.image} alt={m.name} className="w-[112px] h-[72px] object-cover rounded-lg border" />
                 ) : (
                   <div className="w-[112px] h-[72px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
                     No Image

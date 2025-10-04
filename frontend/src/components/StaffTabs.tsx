@@ -8,22 +8,25 @@ const tabs = [
 
 export default function StaffTabs() {
   return (
-    <nav className="flex gap-4 border-b px-4 mb-4">
-      {tabs.map((t) => (
-        <NavLink
-          key={t.path}
-          to={t.path}
-          className={({ isActive }) =>
-            `px-3 py-2 border-b-2 -mb-px ${
-              isActive
-                ? "border-black font-semibold text-black"
-                : "border-transparent text-gray-500 hover:text-black hover:border-gray-300"
-            }`
-          }
-        >
-          {t.label}
-        </NavLink>
-      ))}
+    <nav className="mb-4">
+      <div className="grid grid-cols-3 border-b">
+        {tabs.map((t) => (
+          <NavLink
+            key={t.path}
+            to={t.path}
+            className={({ isActive }) =>
+              [
+                "relative text-center py-3 font-medium transition-colors",
+                isActive
+                  ? "text-black after:absolute after:inset-x-0 after:-bottom-[1px] after:h-[2px] after:bg-black"
+                  : "text-slate-500 hover:text-black"
+              ].join(" ")
+            }
+          >
+            {t.label}
+          </NavLink>
+        ))}
+      </div>
     </nav>
   );
 }
