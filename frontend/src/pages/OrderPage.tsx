@@ -1,4 +1,3 @@
-// src/pages/OrderPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useTable } from "../context/TableCtx";
 import TableBanner from "../components/TableBanner";
@@ -6,6 +5,7 @@ import MenuCard, { type Menu, type MenuForCart } from "../components/MenuCard";
 import MenuDetail from "../components/MenuDetail";
 import Toast from "../components/Toast";
 import { fetchMenus } from "../api/menus";
+import CartBar from "../components/CartBar";
 
 type CartItem = { menuId: number; qty: number };
 const API = import.meta.env.VITE_API_BASE;
@@ -42,7 +42,7 @@ export default function OrderPage() {
 
   useEffect(() => {
     void load();
-    const t = setInterval(load, 5000); // 本番UIでも5秒ポーリング
+    const t = setInterval(load, 5000);
     return () => clearInterval(t);
   }, []);
 
@@ -59,10 +59,10 @@ export default function OrderPage() {
     setCart((prev) => {
       const idx = prev.findIndex((x) => x.menuId === m.id);
       const next = [...prev];
-      if (idx >= 0) next[idx] = { ...next[idx], qty: next[idx].qty + addQty };
+      if (idx >= 0) next[idx] = { ...next[idx], qty: Math.max(0, next[idx].qty + addQty) };
       else next.push({ menuId: m.id, qty: addQty });
-      localStorage.setItem("cart", JSON.stringify(next));
-      return next;
+      localStorage.setItem("cart", JSON.stringify(next.filter((x) => x.qty > 0)));
+      return next.filter((x) => x.qty > 0);
     });
   };
 
@@ -78,7 +78,6 @@ export default function OrderPage() {
   const submitOrder = async () => {
     if (cart.length === 0) return;
 
-    // API へ実注文
     try {
       const res = await fetch(`${API}/api/orders`, {
         method: "POST",
@@ -96,8 +95,6 @@ export default function OrderPage() {
       setToast("注文を受け付けました");
       setCart([]);
       localStorage.setItem("cart", JSON.stringify([]));
-
-      // ★ 在庫UIを即最新化
       await load();
     } catch (e: any) {
       setToast(e?.message ?? "注文に失敗しました");
@@ -105,50 +102,28 @@ export default function OrderPage() {
   };
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      {toast && (
-        <div data-testid="toast">
-          <Toast message={toast} onClose={() => setToast(null)} />
-        </div>
-      )}
-
+    <div className="p-4 space-y-4">
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       <TableBanner table={table} onClear={clear} />
 
       {loading && <div>読み込み中…</div>}
-      {error && <div style={{ color: "crimson" }}>{error}</div>}
+      {error && <div className="text-red-600">{error}</div>}
 
       {/* メニュー一覧 */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-          gap: 12,
-        }}
-      >
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
         {menus.map((m) => (
           <MenuCard
             key={m.id}
             m={m}
             onAdd={onAdd}
             onOpenComment={(id) => setCommentId(id)}
+            inCart={cart.find((c) => c.menuId === m.id)?.qty ?? 0}
           />
         ))}
       </div>
 
-      {/* 合計と注文ボタン */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-        <div>
-          合計: <b>¥{total.toLocaleString()}</b>
-        </div>
-        <button
-          data-testid="order-submit"
-          disabled={cart.length === 0}
-          style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #aaa" }}
-          onClick={submitOrder}
-        >
-          注文を確定
-        </button>
-      </div>
+      {/* 合計と注文ボタン（下固定バー） */}
+      <CartBar total={total} disabled={cart.length === 0} onSubmit={submitOrder} />
 
       {commentId !== null && (
         <MenuDetail menuId={commentId} onClose={() => setCommentId(null)} />

@@ -24,7 +24,7 @@ export default function BoardPage({ canPost = false }: { canPost?: boolean }) {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canPost) return; // お客様は投稿不可
+    if (!canPost) return;
     setLoading(true);
     setErr(null);
     try {
@@ -40,71 +40,68 @@ export default function BoardPage({ canPost = false }: { canPost?: boolean }) {
   };
 
   const onDelete = async (id: number) => {
-    if (!canPost) return; // お客様は削除不可
+    if (!canPost) return;
     const keep = posts;
-    setPosts((p) => p.filter((x) => x.id !== id)); // 楽観的更新
+    setPosts((p) => p.filter((x) => x.id !== id));
     try {
       await deletePost(id);
     } catch {
       setErr("削除に失敗");
-      setPosts(keep); // ロールバック
+      setPosts(keep);
     }
   };
 
   return (
-    <main className="p-6 space-y-6">
-      <h1 className="text-xl font-bold">掲示板</h1>
-      {err && <div className="text-red-600">{err}</div>}
+    <main className="p-6 max-w-4xl mx-auto space-y-6">
+      <h1 className="text-2xl font-bold">掲示板</h1>
+      {err && <div className="p-2 rounded bg-red-100 text-red-700">{err}</div>}
 
-      {/* 投稿UIは staff だけ */}
+      {/* 投稿UI（スタッフのみ） */}
       {canPost && (
-        <form onSubmit={onSubmit} className="space-y-2">
+        <form onSubmit={onSubmit} className="rounded-2xl border bg-white p-4 space-y-3 shadow-sm">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="タイトル"
-            className="border px-2 py-1 rounded w-full"
+            className="border rounded-md w-full px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
           />
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="本文"
-            className="border px-2 py-1 rounded w-full min-h-[120px]"
+            className="border rounded-md w-full min-h-[120px] px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
           />
-          <button
-            disabled={loading}
-            className="px-3 py-1 rounded bg-black text-white disabled:opacity-50"
-          >
-            投稿
-          </button>
+          <div className="text-right">
+            <button
+              disabled={loading}
+              className="px-4 py-2 rounded-lg bg-black text-white font-semibold shadow hover:bg-gray-800 disabled:opacity-40"
+            >
+              投稿
+            </button>
+          </div>
         </form>
       )}
 
-      <ul className="divide-y">
+      <ul className="space-y-3">
         {posts.map((p) => (
-          <li
-            key={p.id}
-            className="py-3 flex items-start justify-between gap-4"
-          >
-            <div>
-              <div className="font-semibold">{p.title}</div>
-              <div className="text-sm text-slate-600 whitespace-pre-wrap">
-                {p.body}
+          <li key={p.id} className="rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="font-semibold">{p.title}</div>
+                <div className="text-sm text-slate-600 whitespace-pre-wrap mt-1">{p.body}</div>
               </div>
+              {canPost && (
+                <button
+                  onClick={() => onDelete(p.id)}
+                  className="px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
+                >
+                  削除
+                </button>
+              )}
             </div>
-            {canPost && (
-              <button
-                onClick={() => onDelete(p.id)}
-                className="px-3 py-1 rounded border text-red-600 border-red-300 hover:bg-red-50"
-              >
-                削除
-              </button>
-            )}
           </li>
         ))}
-        {posts.length === 0 && (
-          <li className="text-slate-500">投稿がありません</li>
-        )}
+        {posts.length === 0 && <li className="text-slate-500">投稿がありません</li>}
       </ul>
     </main>
   );

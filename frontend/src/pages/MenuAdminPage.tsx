@@ -1,6 +1,7 @@
 // frontend/src/pages/MenuAdminPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { fetchMenus, createMenu, deleteMenu, updateMenu, type Menu } from "../api/menus";
+import StaffTabs from "../components/StaffTabs";
 
 type Row = Menu & { _editing?: boolean; _temp?: boolean };
 
@@ -26,7 +27,6 @@ export default function MenuAdminPage() {
 
   useEffect(() => {
     void load();
-    // 従業員画面も定期的に最新化（在庫が他端末の注文で変動するため）
     const t = setInterval(load, 5000);
     return () => clearInterval(t);
   }, []);
@@ -73,7 +73,7 @@ export default function MenuAdminPage() {
           image: (row.image || "").trim() || null,
         });
         setRows((rs) => rs.map((r) => (r.id === optimisticId ? { ...(created as any) } : r)));
-        await load(); // ★ 保存直後に最新を取り直す
+        await load();
       } catch (e: any) {
         setRows(prev);
         setErr(e.message || "追加に失敗しました");
@@ -92,7 +92,7 @@ export default function MenuAdminPage() {
       try {
         setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, ...patch, _editing: false } : r)));
         await updateMenu(row.id, patch);
-        await load(); // ★ 保存直後に最新を取り直す
+        await load();
       } catch (e: any) {
         setRows(prev);
         setErr(e.message || "更新に失敗しました");
@@ -109,7 +109,7 @@ export default function MenuAdminPage() {
     setRows((rs) => rs.filter((r) => r.id !== row.id));
     try {
       await deleteMenu(row.id);
-      await load(); // ★ 削除後も最新化
+      await load();
     } catch (e: any) {
       setRows(prev);
       setErr(e.message || "削除失敗");
@@ -122,24 +122,42 @@ export default function MenuAdminPage() {
   );
 
   return (
-    <div style={{ maxWidth: 960, margin: "40px auto", padding: 16 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>メニュー管理（スタッフ）</h1>
+    <div className="max-w-5xl mx-auto p-6 space-y-4">
+      <StaffTabs />
+
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">メニュー管理（スタッフ）</h1>
+        <div className="flex gap-2">
+          <button
+            data-testid="btn-reload"
+            onClick={load}
+            disabled={loading}
+            className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40"
+          >
+            再取得
+          </button>
+          <button
+            data-testid="btn-add"
+            onClick={addBlank}
+            disabled={loading}
+            className="px-3 py-2 rounded-lg bg-black text-white shadow hover:bg-gray-800 disabled:opacity-40"
+          >
+            追加
+          </button>
+        </div>
+      </header>
+
       {err && (
-        <div role="alert" data-testid="alert-error" style={{ color: "#b00020", marginBottom: 8 }}>
+        <div
+          role="alert"
+          data-testid="alert-error"
+          className="p-3 rounded-lg bg-red-100 text-red-700"
+        >
           {err}
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button data-testid="btn-reload" onClick={load} disabled={loading}>
-          再取得
-        </button>
-        <button data-testid="btn-add" onClick={addBlank} disabled={loading}>
-          追加
-        </button>
-      </div>
-
-      <div style={{ border: "1px solid #eee", borderRadius: 12, overflow: "hidden" }}>
+      <div className="rounded-2xl border bg-white overflow-hidden divide-y">
         {rows.map((m) => {
           const editing = !!m._editing;
           const stock = (m as any).stock ?? 0;
@@ -148,15 +166,9 @@ export default function MenuAdminPage() {
             <div
               key={m.id}
               data-testid="menu-row"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "112px 1fr 120px 120px auto",
-                gap: 12,
-                alignItems: "center",
-                padding: 12,
-                borderBottom: "1px solid #f2f2f2",
-              }}
+              className="grid grid-cols-[112px_1fr_140px_140px_auto] gap-4 items-center p-4"
             >
+              {/* 画像 */}
               <div>
                 {editing ? (
                   <>
@@ -165,20 +177,13 @@ export default function MenuAdminPage() {
                       placeholder="画像URL"
                       value={m.image || ""}
                       onChange={(e) => setField(m.id, "image", e.target.value)}
-                      style={{ width: 112 }}
+                      className="w-[112px] rounded-md border px-2 py-1 text-sm"
                     />
                     {m.image && validImg && (
                       <img
                         src={m.image}
                         alt="preview"
-                        style={{
-                          width: 112,
-                          height: 72,
-                          objectFit: "cover",
-                          borderRadius: 8,
-                          border: "1px solid #eee",
-                          marginTop: 6,
-                        }}
+                        className="w-[112px] h-[72px] object-cover rounded-lg border mt-2"
                       />
                     )}
                   </>
@@ -186,26 +191,16 @@ export default function MenuAdminPage() {
                   <img
                     src={m.image}
                     alt={m.name}
-                    style={{ width: 112, height: 72, objectFit: "cover", borderRadius: 8, border: "1px solid #eee" }}
+                    className="w-[112px] h-[72px] object-cover rounded-lg border"
                   />
                 ) : (
-                  <div
-                    style={{
-                      width: 112,
-                      height: 72,
-                      borderRadius: 8,
-                      border: "1px dashed #ccc",
-                      display: "grid",
-                      placeItems: "center",
-                      fontSize: 12,
-                      color: "#999",
-                    }}
-                  >
+                  <div className="w-[112px] h-[72px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
                     No Image
                   </div>
                 )}
               </div>
 
+              {/* 名前 */}
               <div>
                 {editing ? (
                   <input
@@ -213,13 +208,14 @@ export default function MenuAdminPage() {
                     placeholder="商品名"
                     value={m.name}
                     onChange={(e) => setField(m.id, "name", e.target.value)}
-                    style={{ width: "100%" }}
+                    className="w-full rounded-md border px-3 py-2"
                   />
                 ) : (
-                  <div style={{ fontWeight: 600 }}>{m.name}</div>
+                  <div className="font-semibold">{m.name}</div>
                 )}
               </div>
 
+              {/* 価格 */}
               <div>
                 {editing ? (
                   <input
@@ -228,13 +224,14 @@ export default function MenuAdminPage() {
                     placeholder="価格"
                     value={m.price}
                     onChange={(e) => setField(m.id, "price", Number(e.target.value))}
-                    style={{ width: 120 }}
+                    className="w-full rounded-md border px-3 py-2"
                   />
                 ) : (
-                  <>¥{Number(m.price).toLocaleString()}</>
+                  <div>¥{Number(m.price).toLocaleString()}</div>
                 )}
               </div>
 
+              {/* 在庫 */}
               <div>
                 {editing ? (
                   <input
@@ -243,29 +240,50 @@ export default function MenuAdminPage() {
                     placeholder="在庫"
                     value={stock}
                     onChange={(e) => setField(m.id, "stock", Number(e.target.value))}
-                    style={{ width: 120 }}
+                    className="w-full rounded-md border px-3 py-2"
                   />
                 ) : (
-                  <>在庫: {stock}</>
+                  <div>在庫: {stock}</div>
                 )}
               </div>
 
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              {/* アクション */}
+              <div className="flex gap-2 justify-end">
                 {editing ? (
                   <>
-                    <button data-testid="btn-save" onClick={() => onSave(m)} disabled={loading}>
+                    <button
+                      data-testid="btn-save"
+                      onClick={() => onSave(m)}
+                      disabled={loading}
+                      className="px-3 py-2 rounded-lg bg-black text-white shadow hover:bg-gray-800 disabled:opacity-40"
+                    >
                       保存
                     </button>
-                    <button data-testid="btn-cancel" onClick={() => cancelEdit(m.id)} disabled={loading}>
+                    <button
+                      data-testid="btn-cancel"
+                      onClick={() => cancelEdit(m.id)}
+                      disabled={loading}
+                      className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40"
+                    >
                       キャンセル
                     </button>
                   </>
                 ) : (
                   <>
-                    <button data-testid="btn-edit" onClick={() => startEdit(m.id)} disabled={loading}>
+                    <button
+                      data-testid="btn-edit"
+                      onClick={() => startEdit(m.id)}
+                      disabled={loading}
+                      className="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40"
+                    >
                       編集
                     </button>
-                    <button data-testid="btn-delete" onClick={() => onDelete(m)} disabled={loading}>
+                    <button
+                      data-testid="btn-delete"
+                      onClick={() => onDelete(m)}
+                      disabled={loading}
+                      className="px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-40"
+                    >
                       削除
                     </button>
                   </>
@@ -274,10 +292,10 @@ export default function MenuAdminPage() {
             </div>
           );
         })}
-        {rows.length === 0 && <div style={{ padding: 12 }}>メニューがありません</div>}
+        {rows.length === 0 && <div className="p-4 text-slate-500">メニューがありません</div>}
       </div>
 
-      <div style={{ marginTop: 8, textAlign: "right", fontSize: 12, color: "#666" }}>
+      <div className="text-right text-xs text-slate-500">
         合計価格プレビュー: {totalPreview.toLocaleString()} 円
       </div>
     </div>
