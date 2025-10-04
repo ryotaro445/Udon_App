@@ -1,3 +1,4 @@
+// src/pages/AnalyticsPage.tsx
 import { useEffect, useState } from "react";
 import {
   fetchHourly,
@@ -13,7 +14,6 @@ import MenuDailyChart from "../components/MenuDailyChart";
 import MenuHourlyChart from "../components/MenuHourlyChart";
 import { useNavigate } from "react-router-dom";
 import { useMode } from "../context/ModeCtx";
-
 
 type Tab = "daily" | "hourly" | "menu";
 type MenuView = "daily" | "hourly";
@@ -61,9 +61,8 @@ export default function AnalyticsPage() {
   useEffect(() => { void load(); }, [tab, days]);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-4">
-      {/* タブ（等幅） */}
-      <StaffTabs />
+    <div className="p-6 max-w-6xl mx-auto space-y-4 [writing-mode:horizontal-tb]">
+   
 
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">売上分析</h1>

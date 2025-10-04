@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchMenus, createMenu, deleteMenu, updateMenu, type Menu } from "../api/menus";
 
-
 type Row = Menu & { _editing?: boolean; _temp?: boolean };
 
 export default function MenuAdminPage() {
@@ -121,10 +120,7 @@ export default function MenuAdminPage() {
   );
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-4">
-      {/* タブ（等幅） */}
-      <StaffTabs />
-
+    <div className="max-w-5xl mx-auto p-6 space-y-4 [writing-mode:horizontal-tb]">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">メニュー管理（スタッフ）</h1>
         <div className="flex gap-2">
