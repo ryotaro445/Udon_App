@@ -1,4 +1,3 @@
-// src/pages/OrderPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useTable } from "../context/TableCtx";
 import TableBanner from "../components/TableBanner";

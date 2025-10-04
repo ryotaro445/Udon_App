@@ -1,2 +1,5 @@
 /* frontend/src/index.css */
 @import "tailwindcss";
+:root, html, body, #root {
+  writing-mode: horizontal-tb !important;
+}

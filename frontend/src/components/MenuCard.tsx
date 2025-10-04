@@ -1,4 +1,3 @@
-// src/components/MenuCard.tsx
 import { useEffect, useState } from "react";
 import { isE2E } from "../test/e2eFlag";
 
@@ -20,7 +19,7 @@ export default function MenuCard({
   m,
   onAdd,
   onOpenComment,
-  inCart, // 受け取りのみ（未使用でもOK）
+  inCart,
 }: {
   m: Menu;
   onAdd?: (m: MenuForCart, qty: number) => void;
@@ -127,7 +126,6 @@ export default function MenuCard({
       role="article"
       aria-label={m.name}
       data-testid="menu-card"
-      // 幅は親のカラムにフィットさせる
       className="w-full rounded-2xl bg-white shadow p-3 flex flex-col gap-2 border [writing-mode:horizontal-tb]"
     >
       {/* 画像 */}
