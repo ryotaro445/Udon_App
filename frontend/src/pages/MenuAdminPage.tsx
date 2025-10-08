@@ -86,7 +86,7 @@ export default function MenuAdminPage() {
       setLoading(true);
       try {
         setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, ...patch, _editing: false } : r)));
-        // updateMenu を使っていればここで呼ぶ: await updateMenu(row.id, patch);
+        // 必要なら API へ反映: await updateMenu(row.id, patch);
         await load();
       } catch (e: any) {
         setRows(prev);
@@ -116,8 +116,6 @@ export default function MenuAdminPage() {
     [rows]
   );
 
-
-
   return (
     <div className="max-w-6xl w-full min-w-0 mx-auto p-6 space-y-4" style={{ writingMode: "horizontal-tb" }}>
       <header className="flex items-center justify-between">
@@ -127,8 +125,7 @@ export default function MenuAdminPage() {
             data-testid="btn-reload"
             onClick={load}
             disabled={loading}
-            className="px-4 py-2 rounded-lg border border-sky-700 text-sky-700 bg-white
-                       hover:bg-sky-50 disabled:opacity-40"
+            className="px-4 py-2 rounded-lg border border-sky-700 text-sky-700 bg-white hover:bg-sky-50 disabled:opacity-40"
           >
             再取得
           </button>
@@ -136,8 +133,7 @@ export default function MenuAdminPage() {
             data-testid="btn-add"
             onClick={addBlank}
             disabled={loading}
-            className="px-4 py-2 rounded-lg border border-sky-700 bg-gradient-to-b from-sky-600 to-sky-700
-                       text-white shadow hover:from-sky-700 hover:to-sky-800 disabled:opacity-40"
+            className="px-4 py-2 rounded-lg border border-sky-700 bg-gradient-to-b from-sky-600 to-sky-700 text-white shadow hover:from-sky-700 hover:to-sky-800 disabled:opacity-40"
           >
             追加
           </button>
@@ -157,9 +153,8 @@ export default function MenuAdminPage() {
           const validImg = (m.image || "").trim().startsWith("http");
 
           return (
-            <div key={m.id} data-testid="menu-row"
-                 className="flex items-start gap-8 p-4" style={{ writingMode: "horizontal-tb" }}>
-              {/* 画像（固定幅） */}
+            <div key={m.id} data-testid="menu-row" className="flex items-start gap-8 p-4" style={{ writingMode: "horizontal-tb" }}>
+              {/* 左: 画像 + 名前（縦積み） */}
               <div className="flex-[0_0_192px]">
                 {editing ? (
                   <>
@@ -173,64 +168,65 @@ export default function MenuAdminPage() {
                     {m.image && validImg && (
                       <img src={m.image} alt="preview" className="w-[192px] h-[108px] object-cover rounded-lg border mt-2" />
                     )}
+                    {/* ★ 画像の下に名前（入力） */}
+                    <input
+                      data-testid="inp-name"
+                      placeholder="商品名"
+                      value={m.name}
+                      onChange={(e) => setField(m.id, "name", e.target.value)}
+                      className="w-[192px] rounded-md border px-3 py-2 mt-2"
+                    />
                   </>
-                ) : m.image ? (
-                  <img src={m.image} alt={m.name} className="w-[192px] h-[108px] object-cover rounded-lg border" />
                 ) : (
-                  <div className="w-[192px] h-[108px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
-                    No Image
-                  </div>
+                  <>
+                    {m.image ? (
+                      <img src={m.image} alt={m.name} className="w-[192px] h-[108px] object-cover rounded-lg border" />
+                    ) : (
+                      <div className="w-[192px] h-[108px] rounded-lg border border-dashed text-xs text-slate-400 grid place-items-center">
+                        No Image
+                      </div>
+                    )}
+                    {/* ★ 画像の下に名前（表示） */}
+                    <div className="mt-2 text-base font-semibold truncate" title={m.name}>{m.name}</div>
+                  </>
                 )}
               </div>
 
-              {/* 名前（可変幅、折り返し） */}
-              <div className="min-w-0 flex-1">
-                {editing ? (
-                  <input
-                    data-testid="inp-name"
-                    placeholder="商品名"
-                    value={m.name}
-                    onChange={(e) => setField(m.id, "name", e.target.value)}
-                    className="w-full rounded-md border px-3 py-2"
-                  />
-                ) : (
-                  <div className="font-semibold break-words">{m.name}</div>
-                )}
+              {/* 中央: 価格・在庫 */}
+              <div className="flex-1 min-w-0 flex items-start gap-8">
+                {/* 価格 */}
+                <div className="w-[140px] shrink-0">
+                  {editing ? (
+                    <input
+                      data-testid="inp-price"
+                      type="number"
+                      placeholder="価格"
+                      value={m.price}
+                      onChange={(e) => setField(m.id, "price", Number(e.target.value))}
+                      className="w-full rounded-md border px-3 py-2"
+                    />
+                  ) : (
+                    <div className="text-lg">¥{Number(m.price).toLocaleString()}</div>
+                  )}
+                </div>
+                {/* 在庫 */}
+                <div className="w-[140px] shrink-0">
+                  {editing ? (
+                    <input
+                      data-testid="inp-stock"
+                      type="number"
+                      placeholder="在庫"
+                      value={stock}
+                      onChange={(e) => setField(m.id, "stock", Number(e.target.value))}
+                      className="w-full rounded-md border px-3 py-2"
+                    />
+                  ) : (
+                    <div className="text-slate-700">在庫: {stock}</div>
+                  )}
+                </div>
               </div>
 
-              {/* 価格 */}
-              <div className="w-[140px] shrink-0">
-                {editing ? (
-                  <input
-                    data-testid="inp-price"
-                    type="number"
-                    placeholder="価格"
-                    value={m.price}
-                    onChange={(e) => setField(m.id, "price", Number(e.target.value))}
-                    className="w-full rounded-md border px-3 py-2"
-                  />
-                ) : (
-                  <div>¥{Number(m.price).toLocaleString()}</div>
-                )}
-              </div>
-
-              {/* 在庫 */}
-              <div className="w-[140px] shrink-0">
-                {editing ? (
-                  <input
-                    data-testid="inp-stock"
-                    type="number"
-                    placeholder="在庫"
-                    value={stock}
-                    onChange={(e) => setField(m.id, "stock", Number(e.target.value))}
-                    className="w-full rounded-md border px-3 py-2"
-                  />
-                ) : (
-                  <div>在庫: {stock}</div>
-                )}
-              </div>
-
-              {/* 操作 */}
+              {/* 右: 操作ボタン */}
               <div className="ml-auto flex gap-2">
                 {editing ? (
                   <>
