@@ -30,12 +30,19 @@ def list_posts(limit: int = Query(50, ge=1, le=200), category: Optional[str] = N
   items = _posts
   if category:
     items = [p for p in items if p.category == category]
-  # pinned を先頭、その中で createdAt 降順（なければ id 降順）
-  def sort_key(p: Post):
-    created_sort = p.createdAt or ""
-    return (not (p.pinned or False), created_sort, p.id)
-  # createdAt を新しい順にしたいので reverse=True
-  items = sorted(items, key=sort_key, reverse=True)
+
+  # ✅ 安定ソートで「投稿日降順」→「ピン留めを先頭」の順に並べる
+  def parse_dt(iso: Optional[str]):
+    try:
+      return datetime.fromisoformat(iso) if iso else datetime.min
+    except Exception:
+      return datetime.min
+
+  # ① 投稿日の新しい順
+  items = sorted(items, key=lambda p: parse_dt(p.createdAt), reverse=True)
+  # ② ピン留めを先頭（安定ソートなので①の順序は維持）
+  items = sorted(items, key=lambda p: not bool(p.pinned))
+
   return items[:limit]
 
 @router.post("/posts", response_model=Post, status_code=201, tags=["posts"])
