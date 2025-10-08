@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchMenus, createMenu, deleteMenu, updateMenu, type Menu } from "../api/menus";
 
 type Row = Menu & { _editing?: boolean; _temp?: boolean };
@@ -8,43 +8,88 @@ export default function MenuAdminPage() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const load = async () => {
+  // ✅ 現在編集中かどうかを常に保持（intervalクロージャ対策）
+  const isEditingRef = useRef(false);
+  useEffect(() => {
+    isEditingRef.current = rows.some((r) => !!r._editing);
+  }, [rows]);
+
+  // サーバから取得した Menu[] を Row[] に正規化
+  const normalize = (data: Menu[]): Row[] =>
+    data.map((m) => ({
+      ...m,
+      stock: (m as any).stock ?? (m as any).quantity ?? (m as any).in_stock ?? 0,
+    }));
+
+  // ✅ preserve: true のとき、編集中の行や未保存行を残したままマージ
+  const load = async (preserve = true) => {
     setErr(null);
     try {
       const data = await fetchMenus();
-      setRows(
-        (data as Menu[]).map((m) => ({
-          ...m,
-          stock: (m as any).stock ?? (m as any).quantity ?? (m as any).in_stock ?? 0,
-        }))
-      );
+      const fresh = normalize(data);
+
+      if (!preserve) {
+        setRows(fresh);
+        return;
+      }
+
+      setRows((prev) => {
+        const prevMap = new Map<number, Row>(prev.map((p) => [p.id, p]));
+        // サーバ行をベースに、同じIDで編集中の行はローカル値を優先
+        const merged: Row[] = fresh.map((srv) => {
+          const p = prevMap.get(srv.id);
+          if (p && p._editing) {
+            // 編集中はローカルの入力値を保持（名前/価格/在庫/画像）
+            return {
+              ...srv,
+              name: p.name,
+              price: p.price,
+              image: p.image,
+              stock: (p as any).stock ?? srv.stock,
+              _editing: true,
+              _temp: p._temp,
+            };
+          }
+          return { ...srv };
+        });
+
+        // 負IDなど未保存の新規行はそのまま残す
+        const unsaved = prev.filter((p) => p._temp && !fresh.find((f) => f.id === p.id));
+        return [...unsaved, ...merged];
+      });
     } catch (e: any) {
       setErr(e.message || "読み込み失敗");
     }
   };
 
   useEffect(() => {
-    void load();
-    const t = setInterval(load, 5000);
+    void load(true);
+    // ✅ 5秒おきの自動更新：編集中はスキップしてフォームを守る
+    const t = setInterval(() => {
+      if (!isEditingRef.current) {
+        void load(true);
+      }
+    }, 5000);
     return () => clearInterval(t);
   }, []);
 
   const addBlank = () => {
     const minId = Math.min(0, ...rows.map((r) => r.id));
     const tmp: Row = {
-      id: minId - 1,
+      id: minId - 1, // 負IDで一時行
       name: "",
       price: 500,
       stock: 10,
       image: "",
       _editing: true,
       _temp: true,
-    } as Row;
+    };
     setRows((rs) => [tmp, ...rs]);
   };
 
   const startEdit  = (id: number) =>
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, _editing: true } : r)));
+
   const cancelEdit = (id: number) =>
     setRows((rs) =>
       rs.map((r) => (r.id === id ? { ...r, _editing: false } : r)).filter((r) => !r._temp)
@@ -60,6 +105,7 @@ export default function MenuAdminPage() {
       const optimisticId = row.id;
       setLoading(true);
       try {
+        // 先に編集終了状態にしておく（見た目は残す）
         setRows((rs) => rs.map((r) => (r.id === optimisticId ? { ...r, _editing: false } : r)));
         const created = await createMenu({
           name: row.name.trim(),
@@ -67,8 +113,11 @@ export default function MenuAdminPage() {
           stock: Number((row as any).stock ?? 0),
           image: (row.image || "").trim() || null,
         });
-        setRows((rs) => rs.map((r) => (r.id === optimisticId ? { ...(created as any) } : r)));
-        await load();
+        // 新IDで置き換え
+        setRows((rs) =>
+          rs.map((r) => (r.id === optimisticId ? ({ ...(created as any) } as Row) : r))
+        );
+        await load(true);
       } catch (e: any) {
         setRows(prev);
         setErr(e.message || "追加に失敗しました");
@@ -86,8 +135,9 @@ export default function MenuAdminPage() {
       setLoading(true);
       try {
         setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, ...patch, _editing: false } : r)));
-        // 必要なら API へ反映: await updateMenu(row.id, patch);
-        await load();
+        // 必要ならサーバ反映
+        // await updateMenu(row.id, patch);
+        await load(true);
       } catch (e: any) {
         setRows(prev);
         setErr(e.message || "更新に失敗しました");
@@ -104,7 +154,7 @@ export default function MenuAdminPage() {
     setRows((rs) => rs.filter((r) => r.id !== row.id));
     try {
       await deleteMenu(row.id);
-      await load();
+      await load(true);
     } catch (e: any) {
       setRows(prev);
       setErr(e.message || "削除失敗");
@@ -123,7 +173,7 @@ export default function MenuAdminPage() {
         <div className="flex gap-2">
           <button
             data-testid="btn-reload"
-            onClick={load}
+            onClick={() => load(true)} // ✅ preserve=true で安全リロード
             disabled={loading}
             className="px-4 py-2 rounded-lg border border-sky-700 text-sky-700 bg-white hover:bg-sky-50 disabled:opacity-40"
           >
@@ -168,7 +218,7 @@ export default function MenuAdminPage() {
                     {m.image && validImg && (
                       <img src={m.image} alt="preview" className="w-[192px] h-[108px] object-cover rounded-lg border mt-2" />
                     )}
-                    {/* ★ 画像の下に名前（入力） */}
+                    {/* 画像の下に名前（入力） */}
                     <input
                       data-testid="inp-name"
                       placeholder="商品名"
@@ -186,7 +236,7 @@ export default function MenuAdminPage() {
                         No Image
                       </div>
                     )}
-                    {/* ★ 画像の下に名前（表示） */}
+                    {/* 画像の下に名前（表示） */}
                     <div className="mt-2 text-base font-semibold truncate" title={m.name}>{m.name}</div>
                   </>
                 )}
