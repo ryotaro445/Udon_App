@@ -1,5 +1,6 @@
+// src/pages/BoardPage.tsx
 import { useEffect, useState } from "react";
-import { fetchPosts, createPost, deletePost, type Post } from "../api/posts";
+import { fetchPosts, createPost, deletePost, setPinned, type Post } from "../api/posts";
 
 export default function BoardPage({ canPost = false }: { canPost?: boolean }) {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -19,7 +20,7 @@ export default function BoardPage({ canPost = false }: { canPost?: boolean }) {
   };
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -50,6 +51,21 @@ export default function BoardPage({ canPost = false }: { canPost?: boolean }) {
       setPosts(keep);
     }
   };
+
+  const onTogglePin = async (post: Post) => {
+    if (!canPost) return;
+    await setPinned(post.id, !post.pinned);
+    await load();
+  };
+
+  const formatYmd = (iso?: string) =>
+    iso
+      ? new Date(iso).toLocaleDateString("ja-JP", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        })
+      : "";
 
   return (
     <main className="p-6 max-w-4xl mx-auto space-y-6">
@@ -87,9 +103,14 @@ export default function BoardPage({ canPost = false }: { canPost?: boolean }) {
           <li key={p.id} className="rounded-2xl border bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="font-semibold">{p.title}</div>
+                <div className="font-semibold">
+                  {p.title} {p.pinned ? <span className="text-blue-600 align-middle">📌</span> : null}
+                </div>
                 <div className="text-sm text-slate-600 whitespace-pre-wrap mt-1">{p.body}</div>
+                {/* NEW: 投稿日（年・月・日） */}
+                <div className="text-sm text-slate-500 mt-2">投稿日: {formatYmd(p.createdAt)}</div>
               </div>
+
               {canPost && (
                 <button
                   onClick={() => onDelete(p.id)}
@@ -99,6 +120,20 @@ export default function BoardPage({ canPost = false }: { canPost?: boolean }) {
                 </button>
               )}
             </div>
+
+            {/* NEW: 左下にピン留めボタン（青ボタンで統一） */}
+            {canPost && (
+              <div className="mt-3 flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => onTogglePin(p)}
+                  className="px-3 py-2 rounded-lg border border-blue-300 text-blue-700 hover:bg-blue-50"
+                >
+                  {p.pinned ? "ピン留めを外す" : "ピン留めする"}
+                </button>
+                {/* 右側スペースには他の青ボタン等を置けます（必要なら） */}
+              </div>
+            )}
           </li>
         ))}
         {posts.length === 0 && <li className="text-slate-500">投稿がありません</li>}
