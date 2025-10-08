@@ -206,7 +206,7 @@ export default function MenuDetail({
         </div>
 
         {/* 入力・送信 */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <div className="comment-row" style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <input
             value={user}
             onChange={(e) => setUser(e.target.value)}
@@ -254,6 +254,20 @@ export default function MenuDetail({
           </div>
         )}
       </div>
+
+      {/* ✅ ローカルCSSで .comment-row をモバイル縦積みに */}
+      <style>{`
+        @media (max-width: 640px) {
+          .comment-row {
+            flex-direction: column;
+          }
+          .comment-row input,
+          .comment-row button {
+            width: 100% !important;
+          }
+        }
+      `}</style>
     </div>
   );
+
 }

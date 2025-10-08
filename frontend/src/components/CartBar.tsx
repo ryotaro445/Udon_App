@@ -26,7 +26,8 @@ export default function CartBar({
 }) {
   return (
     <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-4 py-3">
-      <div className="max-w-6xl mx-auto flex items-start gap-4">
+      {/* ✅ モバイルは縦積み、SM以上で横並び */}
+      <div className="max-w-6xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
         {/* 縦に羅列 */}
         <div className="flex-1 min-w-0">
           <ul className="max-h-56 overflow-auto space-y-2 pr-2">
@@ -76,14 +77,15 @@ export default function CartBar({
         </div>
 
         {/* 合計＆確定 */}
-        <div className="shrink-0 flex items-center gap-4">
-          <div className="text-lg font-semibold whitespace-nowrap">
+        {/* ✅ モバイル: ボタン→合計の順で縦並び／幅100% */}
+        <div className="shrink-0 flex flex-col-reverse gap-2 w-full sm:w-auto sm:flex-row sm:items-center sm:gap-4">
+          <div className="text-lg font-semibold whitespace-nowrap text-right sm:text-left">
             合計: ¥{new Intl.NumberFormat("ja-JP").format(total)}
           </div>
           <button
             onClick={onSubmit}
             disabled={disabled}
-            className="px-4 py-2 rounded-lg bg-black text-white font-semibold disabled:opacity-40 hover:bg-gray-800"
+            className="px-4 py-2 rounded-lg bg-black text-white font-semibold disabled:opacity-40 hover:bg-gray-800 w-full sm:w-auto"
           >
             注文を確定
           </button>
