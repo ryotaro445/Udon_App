@@ -56,7 +56,6 @@ def post_like(
         )
     )
     if exists:
-        # 既に押していたら状態は据え置き（idempotent）
         count = db.scalar(
             select(func.count()).select_from(MenuLike).where(MenuLike.menu_id == menu_id)
         ) or 0

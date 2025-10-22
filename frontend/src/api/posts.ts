@@ -33,7 +33,7 @@ export const createPost = (p: {
 export const deletePost = (id: number) =>
   apiDelete<void>(`/api/posts/${id}`, staffHeaders);
 
-// NEW: ピン留め切替（サーバは POST /posts/:id/pin を受け付ける）
+// ピン留め切替（サーバは POST /posts/:id/pin を受け付ける）
 export const setPinned = (id: number, pinned: boolean) =>
   apiPost<{ ok: boolean; pinned: boolean }>(
     `/api/posts/${id}/pin`,

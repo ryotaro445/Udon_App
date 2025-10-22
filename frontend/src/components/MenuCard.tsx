@@ -67,7 +67,7 @@ export default function MenuCard({
 
   const addNow = () => {
     if (soldOut) return;
-    onAdd?.({ id: m.id, price: m.price, stock: m.stock }, 1); // 1個だけ追加
+    onAdd?.({ id: m.id, price: m.price, stock: m.stock }, 1); 
   };
 
   const toggleLike = async () => {

@@ -59,7 +59,7 @@ export default function CartBar({
                     ＋
                   </button>
 
-                  {/* 料金と＋の間のスペースを圧縮（幅も少しだけ細く） */}
+                  
                   <span className="w-16 sm:w-20 text-right tabular-nums">
                     ¥{(it.price * it.qty).toLocaleString()}
                   </span>

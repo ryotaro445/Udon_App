@@ -8,7 +8,7 @@ export default function MenuAdminPage() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // ✅ 現在編集中かどうかを常に保持（intervalクロージャ対策）
+ 
   const isEditingRef = useRef(false);
   useEffect(() => {
     isEditingRef.current = rows.some((r) => !!r._editing);
@@ -21,7 +21,6 @@ export default function MenuAdminPage() {
       stock: (m as any).stock ?? (m as any).quantity ?? (m as any).in_stock ?? 0,
     }));
 
-  // ✅ preserve: true のとき、編集中の行や未保存行を残したままマージ
   const load = async (preserve = true) => {
     setErr(null);
     try {
@@ -35,7 +34,6 @@ export default function MenuAdminPage() {
 
       setRows((prev) => {
         const prevMap = new Map<number, Row>(prev.map((p) => [p.id, p]));
-        // サーバ行をベースに、同じIDで編集中の行はローカル値を優先
         const merged: Row[] = fresh.map((srv) => {
           const p = prevMap.get(srv.id);
           if (p && p._editing) {
@@ -105,7 +103,6 @@ export default function MenuAdminPage() {
       const optimisticId = row.id;
       setLoading(true);
       try {
-        // 先に編集終了状態にしておく（見た目は残す）
         setRows((rs) => rs.map((r) => (r.id === optimisticId ? { ...r, _editing: false } : r)));
         const created = await createMenu({
           name: row.name.trim(),
@@ -135,7 +132,6 @@ export default function MenuAdminPage() {
       setLoading(true);
       try {
         setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, ...patch, _editing: false } : r)));
-        // 必要ならサーバ反映
         // await updateMenu(row.id, patch);
         await load(true);
       } catch (e: any) {

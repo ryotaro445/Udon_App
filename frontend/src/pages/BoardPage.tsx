@@ -107,7 +107,7 @@ export default function BoardPage({ canPost = false }: { canPost?: boolean }) {
                   {p.title} {p.pinned ? <span className="text-blue-600 align-middle">📌</span> : null}
                 </div>
                 <div className="text-sm text-slate-600 whitespace-pre-wrap mt-1">{p.body}</div>
-                {/* NEW: 投稿日（年・月・日） */}
+                {/*  投稿日（年・月・日） */}
                 <div className="text-sm text-slate-500 mt-2">投稿日: {formatYmd(p.createdAt)}</div>
               </div>
 
@@ -121,7 +121,7 @@ export default function BoardPage({ canPost = false }: { canPost?: boolean }) {
               )}
             </div>
 
-            {/* NEW: 左下にピン留めボタン（青ボタンで統一） */}
+            {/*  左下にピン留めボタン（青ボタンで統一） */}
             {canPost && (
               <div className="mt-3 flex justify-between">
                 <button

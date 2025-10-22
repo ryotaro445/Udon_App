@@ -35,7 +35,7 @@ def list_order_ids(status: str, db: Session = Depends(get_db)):
 
     # テスト・初期表示用のプレースホルダー
     if not ids and status == "placed":
-        o = Order(status="placed", table_id=0, created_at=datetime.now(timezone.utc))  # ★ created_at を必ず付与
+        o = Order(status="placed", table_id=0, created_at=datetime.now(timezone.utc))  
         db.add(o)
         db.commit()
         ids = [o.id]

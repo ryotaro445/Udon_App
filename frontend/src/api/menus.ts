@@ -10,7 +10,7 @@ export type Menu = {
 
 const API = import.meta.env.VITE_API_BASE;
 
-// 取得（http ラッパを経由せず fetch で no-store と ts を付与）
+
 export async function fetchMenus(): Promise<Menu[]> {
   const u = new URL(`${API}/api/menus`);
   u.searchParams.set("ts", String(Date.now())); // キャッシュバスター
@@ -19,10 +19,10 @@ export async function fetchMenus(): Promise<Menu[]> {
   return (await res.json()) as Menu[];
 }
 
-// 以下は既存どおり http ラッパを使ってもOK（必要なら置換）
+
 import { http } from "./http";
 
-// 追加
+
 export async function createMenu(payload: any) {
   return http.post<any>("/api/menus", payload);
 }

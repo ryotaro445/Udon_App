@@ -29,7 +29,6 @@ app.add_middleware(
 )
 
 # --- APIレスポンスのキャッシュ無効化 ---
-# ※ /api/analytics を追加
 API_NO_STORE_PREFIXES = (
     "/menus",
     "/api/menus",

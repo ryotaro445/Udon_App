@@ -3,7 +3,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "xxxx_add_likes_comments"
-down_revision = None  # 既存の最新リビジョンに差し替えてください
+down_revision = None  
 branch_labels = None
 depends_on = None
 

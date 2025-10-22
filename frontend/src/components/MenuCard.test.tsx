@@ -10,14 +10,14 @@ describe("MenuCard", () => {
 
     render(<MenuCard m={m as any} onAdd={onAdd as any} />);
 
-    // 現在のUIは「いいね」ではなく「＋」ボタン（aria-label="plus"）
+    
     const btn = await screen.findByRole("button", { name: /plus|＋|\+/i });
     fireEvent.click(btn);
 
     expect(onAdd).toHaveBeenCalled();
-    // token も内部で生成される想定なので、第2引数に渡る
+    
     const callArgs = onAdd.mock.calls[0];
-    expect(callArgs?.[0]).toBe(1);             // id
-    expect(typeof callArgs?.[1]).toBe("string"); // token
+    expect(callArgs?.[0]).toBe(1);             
+    expect(typeof callArgs?.[1]).toBe("string"); 
   });
 });

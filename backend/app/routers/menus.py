@@ -24,7 +24,6 @@ def _to_int(v, default=0):
   except Exception: return default
 
 def _bool_from_payload(payload: Dict[str, Any]) -> Optional[bool]:
-  # stock(number) → in_stock(bool) も解釈
   if "in_stock" in payload: return bool(payload["in_stock"])
   if "stock" in payload: return _to_int(payload["stock"], 0) > 0
   return None

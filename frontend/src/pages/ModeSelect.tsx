@@ -38,7 +38,7 @@ export default function ModeSelect() {
         className="w-full max-w-4xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm"
         aria-labelledby="mode-title"
       >
-        {/* 細かい説明テキストをすべて削除 */}
+       
         <header className="px-8 pt-8 pb-6 text-center">
           <h1 id="mode-title" className="text-3xl font-bold text-slate-900 dark:text-slate-100">
             利用モードを選択
@@ -74,11 +74,9 @@ export default function ModeSelect() {
             >
               <div className="text-6xl mb-3" aria-hidden>🧑‍🍳</div>
               <div className="text-xl font-bold">従業員</div>
-              {/* 「メニュー編集・在庫・分析」削除 */}
+            
             </button>
           </div>
-
-          {/* 下部の注意文（パスワード入力・環境変数）削除 */}
         </div>
       </section>
     </main>

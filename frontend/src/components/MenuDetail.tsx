@@ -6,14 +6,14 @@ import { isE2E } from "../test/e2eFlag";
 // ==== 型 =====
 type RawComment = {
   id: number;
-  user?: string | null;    // サーバによっては user
-  author?: string | null;  // もしくは author
+  user?: string | null;    
+  author?: string | null;  
   text: string;
   created_at?: string;
 };
 type Comment = {
   id: number;
-  user: string | null;     // 表示用は user に正規化
+  user: string | null;     
   text: string;
   created_at?: string;
 };
@@ -48,7 +48,7 @@ async function getComments(menuId: number): Promise<Comment[]> {
   return (Array.isArray(data) ? data : []).map(toComment);
 }
 
-// ★ 送信は author を使う（バックエンドに合わせる）
+
 async function postComment(
   menuId: number,
   body: { author?: string; text: string }
@@ -91,7 +91,7 @@ export default function MenuDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menuId]);
 
-  // ===== 送信（成功時だけ反映。エラー時は state を触らない）=====
+  // ===== 送信（成功時だけ反映=====
   const submit = async () => {
     if (!canSend) return;
     setSending(true);
@@ -112,7 +112,7 @@ export default function MenuDetail({
     }
   };
 
-  // ★ IME変換中のEnterでは送信しない
+  // IME変換中のEnterでは送信しない
   const onKeyDown = (ev: React.KeyboardEvent<HTMLInputElement>) => {
     const isComp = composing || (ev as any).nativeEvent?.isComposing;
     if (ev.key === "Enter" && !isComp && canSend) {

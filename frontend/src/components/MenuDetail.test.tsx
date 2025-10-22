@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import MenuDetail from "./MenuDetail";
 
-// fetch を時系列でモックするユーティリティ
 function queueFetch(...responses: Array<Response>) {
   let i = 0;
   vi.spyOn(global, "fetch").mockImplementation((_input: RequestInfo, _init?: RequestInit) => {

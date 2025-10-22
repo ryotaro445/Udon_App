@@ -11,7 +11,7 @@ function PathnameProbe() {
 }
 
 function AppRoutes() {
-  // 本物の OrderPage を出すと TableProvider が要るので、ここはダミーにしてOK
+ 
   return (
     <Routes>
       <Route path="/mode" element={<ModeSelect />} />

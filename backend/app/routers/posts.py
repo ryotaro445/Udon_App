@@ -5,7 +5,7 @@ from typing import List, Optional
 from itertools import count
 from datetime import datetime
 
-# ※ prefix は付けない（/api は main 側で付けてマウント）
+
 router = APIRouter()
 
 # ----- スキーマ -----
@@ -20,7 +20,7 @@ class Post(PostIn):
   id: int
   createdAt: Optional[str] = None   # ISO文字列で保持（フロントで日付整形）
 
-# ----- インメモリ保存（デモ用） -----
+# ----- インメモリ保存 -----
 _posts: List[Post] = []
 _seq = count(1)
 
@@ -31,7 +31,7 @@ def list_posts(limit: int = Query(50, ge=1, le=200), category: Optional[str] = N
   if category:
     items = [p for p in items if p.category == category]
 
-  # ✅ 安定ソートで「投稿日降順」→「ピン留めを先頭」の順に並べる
+  
   def parse_dt(iso: Optional[str]):
     try:
       return datetime.fromisoformat(iso) if iso else datetime.min

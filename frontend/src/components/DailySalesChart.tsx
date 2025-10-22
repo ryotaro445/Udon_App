@@ -31,7 +31,7 @@ export default function DailySalesChart({
           <Tooltip />
           <Legend />
           <Line yAxisId="left" type="monotone" dataKey="sales" dot />
-          {/* 注文件数も見せたい場合（APIがordersを返すときだけ） */}
+          
           <Line yAxisId="right" type="monotone" dataKey="orders" strokeDasharray="4 2" dot />
         </LineChart>
       </ResponsiveContainer>

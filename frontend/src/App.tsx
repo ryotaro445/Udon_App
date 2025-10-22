@@ -5,7 +5,7 @@ import ModeGuard from "./pages/ModeGuard";
 import { CustomerApp } from "./apps/CustomerApp";
 import { StaffApp } from "./apps/StaffApp";
 
-// E2Eブート（必要なら残す）
+
 (function bootstrapE2E() {
   try {
     const sp = new URLSearchParams(window.location.search);
