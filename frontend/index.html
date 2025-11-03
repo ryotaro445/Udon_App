@@ -1,13 +1,16 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <title>Udon Analytics (frontend/index.html)</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" style="padding:24px;font-weight:bold">
+      ← ここが見えたら HTML はサーブできています（Reactマウント前）
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      console.log("index.html inline script loaded");
+    </script>
   </body>
 </html>

@@ -1,3 +1,4 @@
+// frontend/src/pages/OrderPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useTable } from "../context/TableCtx";
 import TableBanner from "../components/TableBanner";
@@ -6,9 +7,9 @@ import MenuDetail from "../components/MenuDetail";
 import Toast from "../components/Toast";
 import { fetchMenus } from "../api/menus";
 import CartBar, { type CartViewItem } from "../components/CartBar";
+import { apiURL } from "../api/http";
 
 type CartItem = { menuId: number; qty: number };
-const API = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
 export default function OrderPage() {
   const { table, clear } = useTable();
@@ -46,7 +47,6 @@ export default function OrderPage() {
     return () => clearInterval(t);
   }, []);
 
-  // 追加（カードの＋／−は削除済み。ここでは Add のみ許可）
   const onAdd = (m: MenuForCart, addQty: number) => {
     if (typeof m.stock === "number" && m.stock <= 0) {
       setToast("在庫がありません");
@@ -68,7 +68,6 @@ export default function OrderPage() {
     });
   };
 
-  // カート操作（合計バー側の＋／−／取消）
   const inc = (id: number) =>
     setCart((prev) => {
       const m = menus.find((x) => x.id === id);
@@ -121,7 +120,7 @@ export default function OrderPage() {
   const submitOrder = async () => {
     if (cart.length === 0) return;
     try {
-      const res = await fetch(`${API}/api/orders`, {
+      const res = await fetch(apiURL(`/api/orders`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -150,7 +149,6 @@ export default function OrderPage() {
       {loading && <div>読み込み中…</div>}
       {error && <div className="text-red-600">{error}</div>}
 
-      {/* 12 カラム格子（カード側に数量UIなし） */}
       <div className="grid min-w-0 grid-cols-12 gap-4 sm:gap-5 md:gap-6">
         {menus.map((m) => (
           <div key={m.id} className="col-span-12 sm:col-span-6 md:col-span-4 xl:col-span-3 2xl:col-span-2">

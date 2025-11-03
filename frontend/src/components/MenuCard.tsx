@@ -1,32 +1,32 @@
+// frontend/src/components/MenuCard.tsx
 import { useEffect, useState } from "react";
-import { isE2E } from "../test/e2eFlag";
+import { apiURL } from "../api/http";
 
 export type Menu = {
   id: number;
   name: string;
   price: number;
-  stock: number;
+  stock?: number | null;
   image?: string | null;
 };
-export type MenuForCart = { id: number; price: number; stock?: number };
+export type MenuForCart = { id: number; price: number; stock?: number | null };
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 const IMG_H = "h-28 md:h-32";
 
 export default function MenuCard({
   m,
   onAdd,
   onOpenComment,
-  inCart, // 参照のみ
+  inCart,
 }: {
   m: Menu;
   onAdd?: (m: MenuForCart, qty: number) => void;
   onOpenComment?: (id: number) => void;
   inCart?: number;
 }) {
-  const [likeCount, setLikeCount] = useState<number>(0);
-  const [liked, setLiked] = useState<boolean>(false);
-  const [busy, setBusy] = useState<boolean>(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   // userToken
   let token = localStorage.getItem("userToken") ?? "";
@@ -44,8 +44,8 @@ export default function MenuCard({
     (async () => {
       try {
         const [r1, r2] = await Promise.all([
-          fetch(`${API_BASE}/api/menus/${m.id}/likes`),
-          fetch(`${API_BASE}/api/menus/${m.id}/like/me`, {
+          fetch(apiURL(`/api/menus/${m.id}/likes`)),
+          fetch(apiURL(`/api/menus/${m.id}/like/me`), {
             headers: { "X-User-Token": token },
           }),
         ]);
@@ -57,17 +57,22 @@ export default function MenuCard({
           const js2 = await r2.json();
           setLiked(Boolean(js2?.liked));
         }
-      } catch {}
+      } catch {
+        /* no-op */
+      }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.id]);
 
-  const soldOut = Number.isFinite(m.stock) ? m.stock <= 0 : false;
+  const soldOut =
+    typeof m.stock === "number" ? m.stock <= 0 : false;
 
   const addNow = () => {
     if (soldOut) return;
-    onAdd?.({ id: m.id, price: m.price, stock: m.stock }, 1); 
+    onAdd?.({ id: m.id, price: m.price, stock: m.stock ?? undefined }, 1);
   };
 
   const toggleLike = async () => {
@@ -77,14 +82,13 @@ export default function MenuCard({
       if (!liked) {
         setLiked(true);
         setLikeCount((v) => v + 1);
-        const r = await fetch(`${API_BASE}/api/menus/${m.id}/like`, {
+        const r = await fetch(apiURL(`/api/menus/${m.id}/like`), {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-User-Token": token },
         });
         if (r.ok) {
           const js = await r.json();
           if (typeof js?.count === "number") setLikeCount(js.count);
-          setLiked(true);
         } else {
           setLiked(false);
           setLikeCount((v) => Math.max(0, v - 1));
@@ -92,14 +96,13 @@ export default function MenuCard({
       } else {
         setLiked(false);
         setLikeCount((v) => Math.max(0, v - 1));
-        const r = await fetch(`${API_BASE}/api/menus/${m.id}/like`, {
+        const r = await fetch(apiURL(`/api/menus/${m.id}/like`), {
           method: "DELETE",
           headers: { "X-User-Token": token },
         });
         if (r.ok) {
           const js = await r.json();
           if (typeof js?.count === "number") setLikeCount(js.count);
-          setLiked(false);
         } else {
           setLiked(true);
           setLikeCount((v) => v + 1);
@@ -117,7 +120,6 @@ export default function MenuCard({
       data-testid="menu-card"
       className="w-full rounded-2xl bg-white shadow p-3 flex flex-col gap-2 border [writing-mode:horizontal-tb]"
     >
-      {/* 画像 */}
       <div className="relative">
         {m.image ? (
           <img
@@ -137,11 +139,9 @@ export default function MenuCard({
         )}
       </div>
 
-      {/* タイトル・価格（在庫の表示はナシ） */}
       <div className="font-semibold truncate">{m.name}</div>
       <div className="text-slate-700">¥{m.price.toLocaleString()}</div>
 
-      {/* 操作ボタン（カード側は追加だけ） */}
       <div className="flex gap-2 items-center">
         <button
           data-testid="add"

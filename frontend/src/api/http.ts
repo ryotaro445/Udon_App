@@ -1,4 +1,9 @@
-const BASE = import.meta.env.VITE_API_BASE?.replace(/\/+$/, "") ?? "";
+// frontend/src/api/http.ts
+const BASE =
+  import.meta.env.VITE_API_BASE?.replace(/\/+$/, "") ?? "";
+
+// ★ これを追加（named export）
+export const apiURL = (path: string) => `${BASE}${path}`;
 
 function staffHeader() {
   try {
@@ -13,7 +18,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
-      ...staffHeader(),                 // ★ 追加
+      ...staffHeader(),
       ...(init?.headers || {}),
     },
     ...init,
