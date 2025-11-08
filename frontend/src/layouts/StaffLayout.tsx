@@ -7,7 +7,6 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { to: "/s/menu-admin", label: "メニュー管理" },
     { to: "/s/analytics", label: "売上分析" },
-    { to: "/s/notices", label: "掲示板編集" },
   ];
 
   return (

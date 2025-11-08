@@ -1,4 +1,4 @@
-// src/pages/ModeSelect.tsx
+// frontend/src/pages/ModeSelect.tsx
 import { useNavigate } from "react-router-dom";
 import { useMode } from "../context/ModeCtx";
 import React from "react";
@@ -15,10 +15,17 @@ export default function ModeSelect() {
   const pickCustomer = () => {
     setMode("customer");
     try { localStorage.setItem("mode", "customer"); } catch {}
-    navigate("/c/order?table=12");
+    navigate("/c/order"); // ✅ table指定も削除OK
   };
 
   const pickStaff = () => {
+    if (import.meta.env.DEV) {
+      console.log("🔓 開発モード：パスワードスキップ");
+      setMode("staff");
+      navigate("/s/menu-admin");
+      return;
+    }
+
     const input = window.prompt("従業員パスワードを入力してください") ?? "";
     if (input.trim() === staffPass) {
       try {
@@ -38,7 +45,6 @@ export default function ModeSelect() {
         className="w-full max-w-4xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm"
         aria-labelledby="mode-title"
       >
-       
         <header className="px-8 pt-8 pb-6 text-center">
           <h1 id="mode-title" className="text-3xl font-bold text-slate-900 dark:text-slate-100">
             利用モードを選択
@@ -59,7 +65,6 @@ export default function ModeSelect() {
             >
               <div className="text-6xl mb-3" aria-hidden>🛎️</div>
               <div className="text-xl font-bold">お客様</div>
-              {/* 「注文・掲示板」削除 */}
             </button>
 
             <button
@@ -74,7 +79,6 @@ export default function ModeSelect() {
             >
               <div className="text-6xl mb-3" aria-hidden>🧑‍🍳</div>
               <div className="text-xl font-bold">従業員</div>
-            
             </button>
           </div>
         </div>

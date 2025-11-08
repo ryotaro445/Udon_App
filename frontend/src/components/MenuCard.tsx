@@ -1,117 +1,24 @@
 // frontend/src/components/MenuCard.tsx
-import { useEffect, useState } from "react";
-import { apiURL } from "../api/http";
+import { type FC } from "react";
 
 export type Menu = {
   id: number;
   name: string;
   price: number;
-  stock?: number | null;
   image?: string | null;
+  // stock/in_stock は使わない
 };
-export type MenuForCart = { id: number; price: number; stock?: number | null };
+
+export type MenuForCart = { id: number; price: number };
 
 const IMG_H = "h-28 md:h-32";
 
-export default function MenuCard({
-  m,
-  onAdd,
-  onOpenComment,
-  inCart,
-}: {
+const MenuCard: FC<{
   m: Menu;
   onAdd?: (m: MenuForCart, qty: number) => void;
-  onOpenComment?: (id: number) => void;
   inCart?: number;
-}) {
-  const [likeCount, setLikeCount] = useState(0);
-  const [liked, setLiked] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  // userToken
-  let token = localStorage.getItem("userToken") ?? "";
-  if (!token) {
-    const fallback = Math.random().toString(36).slice(2);
-    token =
-      (globalThis.crypto?.randomUUID?.() as string | undefined)
-        ? `DEMO-${crypto.randomUUID()}`
-        : `DEMO-${fallback}`;
-    localStorage.setItem("userToken", token);
-  }
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [r1, r2] = await Promise.all([
-          fetch(apiURL(`/api/menus/${m.id}/likes`)),
-          fetch(apiURL(`/api/menus/${m.id}/like/me`), {
-            headers: { "X-User-Token": token },
-          }),
-        ]);
-        if (mounted && r1.ok) {
-          const js1 = await r1.json();
-          setLikeCount(Number(js1?.count ?? 0));
-        }
-        if (mounted && r2.ok) {
-          const js2 = await r2.json();
-          setLiked(Boolean(js2?.liked));
-        }
-      } catch {
-        /* no-op */
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [m.id]);
-
-  const soldOut =
-    typeof m.stock === "number" ? m.stock <= 0 : false;
-
-  const addNow = () => {
-    if (soldOut) return;
-    onAdd?.({ id: m.id, price: m.price, stock: m.stock ?? undefined }, 1);
-  };
-
-  const toggleLike = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      if (!liked) {
-        setLiked(true);
-        setLikeCount((v) => v + 1);
-        const r = await fetch(apiURL(`/api/menus/${m.id}/like`), {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-User-Token": token },
-        });
-        if (r.ok) {
-          const js = await r.json();
-          if (typeof js?.count === "number") setLikeCount(js.count);
-        } else {
-          setLiked(false);
-          setLikeCount((v) => Math.max(0, v - 1));
-        }
-      } else {
-        setLiked(false);
-        setLikeCount((v) => Math.max(0, v - 1));
-        const r = await fetch(apiURL(`/api/menus/${m.id}/like`), {
-          method: "DELETE",
-          headers: { "X-User-Token": token },
-        });
-        if (r.ok) {
-          const js = await r.json();
-          if (typeof js?.count === "number") setLikeCount(js.count);
-        } else {
-          setLiked(true);
-          setLikeCount((v) => v + 1);
-        }
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
+}> = ({ m, onAdd, inCart }) => {
+  const addNow = () => onAdd?.({ id: m.id, price: m.price }, 1);
 
   return (
     <article
@@ -128,14 +35,11 @@ export default function MenuCard({
             className={`w-full ${IMG_H} object-cover rounded-xl border`}
           />
         ) : (
-          <div className={`w-full ${IMG_H} grid place-items-center rounded-xl border border-dashed text-slate-400`}>
+          <div
+            className={`w-full ${IMG_H} grid place-items-center rounded-xl border border-dashed text-slate-400`}
+          >
             No Image
           </div>
-        )}
-        {soldOut && (
-          <span className="absolute top-2 right-2 text-xs bg-red-600 text-white px-2 py-1 rounded">
-            売り切れ
-          </span>
         )}
       </div>
 
@@ -146,34 +50,13 @@ export default function MenuCard({
         <button
           data-testid="add"
           onClick={addNow}
-          disabled={soldOut}
-          className="px-3 py-2 rounded-lg bg-black text-white font-semibold shadow hover:bg-gray-800 disabled:opacity-40"
+          className="px-3 py-2 rounded-lg bg-black text-white font-semibold shadow hover:bg-gray-800"
         >
-          追加
-        </button>
-
-        {onOpenComment && (
-          <button
-            data-testid="open-comment"
-            onClick={() => onOpenComment(m.id)}
-            className="px-3 py-2 rounded-lg border font-semibold transition
-                      bg-white text-[#0369a1] border-[#0369a1] hover:bg-sky-50"
-          >
-            コメント
-          </button>
-        )}
-
-        <button
-          data-testid={`like-${m.id}`}
-          onClick={toggleLike}
-          disabled={busy}
-          title={liked ? "いいねを取り消す" : "いいね"}
-          aria-label="いいね"
-          className={`ml-auto px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 disabled:opacity-40 ${liked ? "bg-slate-100" : ""}`}
-        >
-          {liked ? "💖" : "🤍"} {likeCount}
+          追加{typeof inCart === "number" && inCart > 0 ? `（${inCart}）` : ""}
         </button>
       </div>
     </article>
   );
-}
+};
+
+export default MenuCard;

@@ -30,14 +30,7 @@ export default function AppHeader() {
               `px-3 py-1.5 rounded-full ${isActive ? "bg-gray-900 text-white" : "hover:bg-gray-100"}`
             }
           >
-            在庫
-          </NavLink>
-          <NavLink
-            to="/analytics"
-            className={({ isActive }) =>
-              `px-3 py-1.5 rounded-full ${isActive ? "bg-gray-900 text-white" : "hover:bg-gray-100"}`
-            }
-          >
+            
             分析
           </NavLink>
         </nav>

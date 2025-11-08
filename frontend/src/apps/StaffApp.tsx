@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import StaffLayout from "../layouts/StaffLayout";
 import MenuAdminPage from "../pages/MenuAdminPage";
 import AnalyticsPage from "../pages/AnalyticsPage";
-import BoardPage from "../pages/BoardPage";
 
 export function StaffApp() {
   return (
@@ -23,8 +22,6 @@ export function StaffApp() {
           element={<Navigate to="../analytics?tab=heatmap" replace />}
         />
 
-        <Route path="notices" element={<BoardPage canPost />} />
-
         {/* デフォルト（メニュー管理へ） */}
         <Route path="" element={<Navigate to="menu-admin" replace />} />
         <Route path="*" element={<Navigate to="menu-admin" replace />} />
@@ -32,3 +29,5 @@ export function StaffApp() {
     </StaffLayout>
   );
 }
+
+export default StaffApp;
