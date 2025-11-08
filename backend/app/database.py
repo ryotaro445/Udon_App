@@ -1,48 +1,35 @@
+# app/database.py
+import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from .models import Base, Menu, Order, OrderItem
+from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv
 
-DATABASE_URL = "sqlite:///./udon.db"
+# .env を読み込む
+load_dotenv()
 
-engine = create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False}
+# PostgreSQL 用 DATABASE_URL を環境変数から取得
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+psycopg2://udon_user:udon_pass@localhost:5432/udon_db"
 )
+
+# エンジン作成（StaticPoolなどSQLite専用設定を削除）
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    pool_pre_ping=True,  # 接続チェックを自動で行う（PostgreSQL向け）
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# ✅ Alembicで管理するため、テーブル作成＆シード投入は削除・停止
+# Base.metadata.create_all(bind=engine)
+# ensure_seeded_once() などの自動実行も削除
 
 def get_db():
+    """FastAPIの依存関係でDBセッションを提供"""
     db = SessionLocal()
     try:
         yield db
-    finally:
-        db.close()
-
-def init_db(seed: bool = True):
-    # 再作成
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-
-    if not seed:
-        return
-
-    db = SessionLocal()
-    try:
-        # メニュー3品
-        m1 = Menu(name="かけうどん", price=390, stock=50)
-        m2 = Menu(name="きつねうどん", price=480, stock=30)
-        m3 = Menu(name="肉うどん", price=680, stock=20)
-        db.add_all([m1, m2, m3])
-        db.flush()
-
-        # /orders?status=placed 用の初期注文
-        order = Order(status="placed", table_id=1)
-        db.add(order)
-        db.flush()
-
-        # 事前シード: menu1(390) x2, menu3(680) x1 → 合計 1460
-        oi1 = OrderItem(order_id=order.id, menu_id=m1.id, price=m1.price, quantity=2)
-        oi2 = OrderItem(order_id=order.id, menu_id=m3.id, price=m3.price, quantity=1)
-        db.add_all([oi1, oi2])
-
-        db.commit()
     finally:
         db.close()

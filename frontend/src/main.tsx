@@ -1,4 +1,4 @@
-// src/main.tsx
+// frontend/src/main.tsx
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -11,9 +11,7 @@ import "./styles/components.css";
 import { attachTestHook } from "./testHook";
 import "./index.css";
 
-
-
-// --- E2Eブートストラップ（?e2e=1 で mode/table を自動注入）---
+// --- E2Eブートストラップ ---
 (function bootstrapE2E() {
   try {
     const sp = new URLSearchParams(window.location.search);
@@ -25,9 +23,7 @@ import "./index.css";
         localStorage.setItem("table", tableFromUrl ?? "12");
       }
     }
-  } catch {
-    // no-op
-  }
+  } catch {}
 })();
 
 attachTestHook();

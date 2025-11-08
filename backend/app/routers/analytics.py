@@ -1,32 +1,31 @@
+# backend/app/routers/analytics.py
 from __future__ import annotations
-import os
+
 from typing import Literal, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Header, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, desc, text
 
 from ..database import get_db
 from ..models import Menu, Order, OrderItem
+from .deps import require_staff  # ✅ 共通のスタッフ認証を使用
 
-router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
-
-def require_staff(x_staff_token: str | None = Header(None, alias="X-Staff-Token")):
-    expected = os.environ.get("STAFF_TOKEN") or os.environ.get("STAFF_PASSWORD")
-    if not expected:
-        raise HTTPException(status_code=503, detail="staff token not configured")
-    if not x_staff_token or x_staff_token != expected:
-        raise HTTPException(status_code=401, detail="staff only")
-    return True
+router = APIRouter(
+    prefix="/api/analytics",
+    tags=["analytics"],
+    dependencies=[Depends(require_staff)],  # ✅ このルーター配下は全てスタッフ限定
+)
 
 
 @router.get("/summary")
 def summary(
     range: Literal["today", "7d", "30d"] = Query("today"),
     db: Session = Depends(get_db),
-    _staff: bool = Depends(require_staff),
 ) -> Dict[str, Any]:
     from datetime import datetime, timedelta, timezone
+
     now = datetime.now(timezone.utc)
     if range == "today":
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -46,6 +45,7 @@ def summary(
             .where(Order.created_at >= start)
         ).scalar_one()
     except Exception:
+        # created_at が NULL などでエラーになった場合のフォールバック
         order_count = db.execute(select(func.count(Order.id))).scalar_one()
         total_amount = db.execute(
             select(func.coalesce(func.sum(OrderItem.quantity * Menu.price), 0))
@@ -67,7 +67,6 @@ def top_menus(
     limit: int = 10,
     days: int = 30,
     db: Session = Depends(get_db),
-    _staff: bool = Depends(require_staff),
 ) -> List[Dict[str, Any]]:
     q = (
         select(
@@ -82,20 +81,25 @@ def top_menus(
         .order_by(desc(func.sum(OrderItem.quantity)))
         .limit(limit)
     )
-    try:
+
+    # 期間フィルタ（PostgreSQL 用）
+    if days > 0:
         from datetime import datetime, timedelta, timezone
+
         start = datetime.now(timezone.utc) - timedelta(days=days)
         q = q.where(Order.created_at >= start)  # type: ignore[attr-defined]
-    except Exception:
-        pass
 
     rows = db.execute(q).all()
     return [
         {
             "menu_id": r.menu_id,
             "name": r.name,
-            "quantity": int(r.quantity or 0),
-            "amount": int(r.amount or 0),
+            # 互換キー（テストは count または qty を期待）
+            "count": int((r.quantity or 0)),
+            "qty": int((r.quantity or 0)),
+            # 既存キーも維持
+            "quantity": int((r.quantity or 0)),
+            "amount": int((r.amount or 0)),
         }
         for r in rows
     ]
@@ -105,17 +109,25 @@ def top_menus(
 def hourly(
     days: int = 7,
     db: Session = Depends(get_db),
-    _staff: bool = Depends(require_staff),
 ) -> Dict[str, Any]:
+    """
+    直近 days 日の時間帯別分布（全メニュー）
+    """
     try:
         from datetime import datetime, timedelta, timezone
+
         start = datetime.now(timezone.utc) - timedelta(days=days)
-        hour_expr = func.strftime("%H", Order.created_at)  # SQLite
+
+        # PostgreSQL 用: created_at から「時」を抽出
+        hour_expr = func.extract("hour", Order.created_at)
+
         rows = db.execute(
             select(
                 hour_expr.label("h"),
                 func.count(Order.id).label("cnt"),
-                func.coalesce(func.sum(OrderItem.quantity * Menu.price), 0).label("amt"),
+                func.coalesce(
+                    func.sum(OrderItem.quantity * Menu.price), 0
+                ).label("amt"),
             )
             .join(OrderItem, OrderItem.order_id == Order.id)
             .join(Menu, Menu.id == OrderItem.menu_id)
@@ -123,13 +135,21 @@ def hourly(
             .group_by("h")
             .order_by("h")
         ).all()
-        by_hour = {int(r.h): (int(r.cnt), int(r.amt)) for r in rows if r.h is not None}
+
+        by_hour = {
+            int(r.h): (int(r.cnt), int(r.amt)) for r in rows if r.h is not None
+        }
         buckets = [
-            {"hour": h, "count": by_hour.get(h, (0, 0))[0], "amount": by_hour.get(h, (0, 0))[1]}
+            {
+                "hour": h,
+                "count": by_hour.get(h, (0, 0))[0],
+                "amount": by_hour.get(h, (0, 0))[1],
+            }
             for h in range(24)
         ]
         return {"days": days, "buckets": buckets}
     except Exception:
+        # DB エラー時は空配列を返す
         return {"days": days, "buckets": []}
 
 
@@ -137,30 +157,35 @@ def hourly(
 def daily_sales(
     days: int = 14,
     db: Session = Depends(get_db),
-    _staff: bool = Depends(require_staff),
 ):
-    """直近days日の日別売上金額＆注文件数"""
+    """
+    直近 days 日の日別売上金額＆注文件数（PostgreSQL版）
+    """
     if days <= 0 or days > 180:
         raise HTTPException(status_code=400, detail="invalid days")
 
     rows = db.execute(
         text(
             """
-        SELECT DATE(o.created_at) AS d,
-               COALESCE(SUM(oi.quantity * m.price), 0) AS sales,
-               COUNT(DISTINCT o.id) AS orders
-        FROM orders o
-        JOIN order_items oi ON oi.order_id = o.id
-        JOIN menus m        ON m.id = oi.menu_id
-        WHERE o.created_at >= DATETIME('now', '-' || :days || ' days')
-        GROUP BY DATE(o.created_at)
-        ORDER BY d ASC
-    """
+            SELECT
+                DATE(o.created_at) AS d,
+                COALESCE(SUM(oi.quantity * m.price), 0) AS sales,
+                COUNT(DISTINCT o.id) AS orders
+            FROM orders o
+            JOIN order_items oi ON oi.order_id = o.id
+            JOIN menus m        ON m.id = oi.menu_id
+            WHERE o.created_at >= (NOW() - (:days || ' days')::interval)
+            GROUP BY DATE(o.created_at)
+            ORDER BY d ASC;
+            """
         ),
         {"days": days},
     ).fetchall()
 
-    return [{"date": r[0], "sales": int(r[1] or 0), "orders": int(r[2] or 0)} for r in rows]
+    return [
+        {"date": r[0], "sales": int(r[1] or 0), "orders": int(r[2] or 0)}
+        for r in rows
+    ]
 
 
 # ===== ここからメニュー別 =====
@@ -170,11 +195,10 @@ def menu_totals(
     days: int = 30,
     limit: int = 50,
     db: Session = Depends(get_db),
-    _staff: bool = Depends(require_staff),
 ) -> List[Dict[str, Any]]:
     """
-    直近days日のメニュー別 合計（注文件数・売上金額）
-    days<=0 なら全期間
+    直近 days 日のメニュー別 合計（注文件数・売上金額）
+    days <= 0 なら全期間
     """
     q = (
         select(
@@ -192,6 +216,7 @@ def menu_totals(
 
     if days > 0:
         from datetime import datetime, timedelta, timezone
+
         start = datetime.now(timezone.utc) - timedelta(days=days)
         q = q.where(Order.created_at >= start)  # type: ignore[attr-defined]
 
@@ -212,31 +237,37 @@ def menu_daily(
     menu_id: int = Query(..., description="対象メニューID"),
     days: int = 14,
     db: Session = Depends(get_db),
-    _staff: bool = Depends(require_staff),
 ) -> List[Dict[str, Any]]:
-    """直近days日の 指定メニュー の日別（件数・売上）"""
+    """
+    直近 days 日の 指定メニュー の日別（件数・売上）
+    PostgreSQL 版
+    """
     if days <= 0 or days > 180:
         raise HTTPException(status_code=400, detail="invalid days")
 
     rows = db.execute(
         text(
             """
-        SELECT DATE(o.created_at) AS d,
-               COALESCE(SUM(oi.quantity), 0)                AS orders,
-               COALESCE(SUM(oi.quantity * m.price), 0)      AS sales
-          FROM orders o
-          JOIN order_items oi ON oi.order_id = o.id
-          JOIN menus m        ON m.id = oi.menu_id
-         WHERE oi.menu_id = :menu_id
-           AND o.created_at >= DATETIME('now', '-' || :days || ' days')
-         GROUP BY DATE(o.created_at)
-         ORDER BY d ASC
-        """
+            SELECT
+                DATE(o.created_at) AS d,
+                COALESCE(SUM(oi.quantity), 0)           AS orders,
+                COALESCE(SUM(oi.quantity * m.price), 0) AS sales
+            FROM orders o
+            JOIN order_items oi ON oi.order_id = o.id
+            JOIN menus m        ON m.id = oi.menu_id
+            WHERE oi.menu_id = :menu_id
+              AND o.created_at >= (NOW() - (:days || ' days')::interval)
+            GROUP BY DATE(o.created_at)
+            ORDER BY d ASC;
+            """
         ),
         {"menu_id": menu_id, "days": days},
     ).fetchall()
 
-    return [{"date": r[0], "orders": int(r[1] or 0), "sales": int(r[2] or 0)} for r in rows]
+    return [
+        {"date": r[0], "orders": int(r[1] or 0), "sales": int(r[2] or 0)}
+        for r in rows
+    ]
 
 
 @router.get("/menu-hourly")
@@ -244,18 +275,26 @@ def menu_hourly(
     menu_id: int,
     days: int = 7,
     db: Session = Depends(get_db),
-    _staff: bool = Depends(require_staff),
 ) -> Dict[str, Any]:
-    """直近days日の 指定メニュー の時間別（0-23時）件数・売上"""
+    """
+    直近 days 日の 指定メニュー の時間別（0-23時）件数・売上
+    PostgreSQL 版
+    """
     try:
         from datetime import datetime, timedelta, timezone
+
         start = datetime.now(timezone.utc) - timedelta(days=days)
-        hour_expr = func.strftime("%H", Order.created_at)  # SQLite
+        hour_expr = func.extract("hour", Order.created_at)
+
         rows = db.execute(
             select(
                 hour_expr.label("h"),
-                func.coalesce(func.sum(OrderItem.quantity), 0).label("cnt"),
-                func.coalesce(func.sum(OrderItem.quantity * Menu.price), 0).label("amt"),
+                func.coalesce(
+                    func.sum(OrderItem.quantity), 0
+                ).label("cnt"),
+                func.coalesce(
+                    func.sum(OrderItem.quantity * Menu.price), 0
+                ).label("amt"),
             )
             .join(OrderItem, OrderItem.order_id == Order.id)
             .join(Menu, Menu.id == OrderItem.menu_id)
@@ -264,9 +303,16 @@ def menu_hourly(
             .group_by("h")
             .order_by("h")
         ).all()
-        by_hour = {int(r.h): (int(r.cnt), int(r.amt)) for r in rows if r.h is not None}
+
+        by_hour = {
+            int(r.h): (int(r.cnt), int(r.amt)) for r in rows if r.h is not None
+        }
         buckets = [
-            {"hour": h, "orders": by_hour.get(h, (0, 0))[0], "amount": by_hour.get(h, (0, 0))[1]}
+            {
+                "hour": h,
+                "orders": by_hour.get(h, (0, 0))[0],
+                "amount": by_hour.get(h, (0, 0))[1],
+            }
             for h in range(24)
         ]
         return {"menu_id": menu_id, "days": days, "buckets": buckets}

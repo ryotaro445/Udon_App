@@ -1,15 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-フェーズ6：デモで使う主要フローのみを検証する最小テスト
-- メニュー取得（ページング／価格順）
-- 注文作成 → 明細取得 → ステータス更新
-- コメント投稿（正常系）
-
-既存の tests/conftest.py の `client` フィクスチャ（TestClient）を利用します。
-"""
-
-from typing import List, Dict
 import pytest
+from starlette.testclient import TestClient
+from app.main import app
+from typing import List, Dict
 
 # --- ユーティリティ ---------------------------------------------------------
 
@@ -112,24 +104,3 @@ def test_order_status_update(client):
     updated = pr.json()
     assert updated["id"] == oid
     assert updated["status"] == "served"
-
-
-# --- コメント投稿：正常系 -----------------------------------------------------
-
-def test_post_comment_ok(client):
-    # 適当なメニューIDを取得
-    mr = client.get("/menus?limit=1&offset=0")
-    assert mr.status_code == 200
-    menus = mr.json()
-    assert len(menus) >= 1
-    mid = menus[0]["id"]
-
-    # 正常なコメントを投稿
-    payload = {"user": "tester", "text": "おいしい！また頼みたいです。"}
-    r = client.post(f"/menus/{mid}/comments", json=payload)
-    assert r.status_code in (200, 201)
-    body = r.json()
-    assert body["text"] == payload["text"]
-    # user が省略可能な実装の場合に備えて存在時のみ検証
-    if "user" in body:
-        assert body["user"] in (payload["user"], None)

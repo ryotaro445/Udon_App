@@ -26,7 +26,6 @@ export default function TopNav() {
       <Item to="/scan" label="スキャン" />
       <Item to="/order" label="注文" />
       <Item to="/kitchen" label="キッチン" />
-      <Item to="/board" label="掲示板" />
       <Item to="/staff" label="スタッフ" />
       <Item to="/analytics" label="分析" />
     </nav>

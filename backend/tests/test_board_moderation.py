@@ -1,4 +1,8 @@
 import importlib
+import pytest
+pytest.skip("掲示板・モデレーション機能を削除したためスキップ", allow_module_level=True)
+
+
 
 def test_comment_ok_word(client, seed_data, monkeypatch):
     # OK になるようにモック

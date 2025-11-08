@@ -15,7 +15,6 @@ export default function AppTopBar() {
     <header className="w-full flex items-center justify-between p-3 shadow">
       <nav className="flex items-center gap-4">
         <Link to="/order">注文</Link>
-        <Link to="/board">掲示板</Link>
         <Link to="/menu-admin">メニュー管理</Link>
       </nav>
       <div className="flex items-center gap-3">
