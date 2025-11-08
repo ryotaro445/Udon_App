@@ -1,41 +1,63 @@
 # 🍜 Udon App
 
 ## 概要
-- メニュー表示・注文
-- いいね機能
-- コメント機能（⚡ OpenAI Moderation による不適切ワードブロック対応）
-- 掲示板機能
-- 従業員ダッシュボード（在庫管理・売上分析）
-- Swagger UI による API 確認
+
+Udon App は、メニューの注文データから **需要予測** と  
+**曜日 × 時間帯ヒートマップ** を可視化する分析用ダッシュボードです。
+
+- 過去の注文履歴にもとづく **メニュー別・日別の予測杯数**
+- 曜日 × 時間帯ごとの **混雑状況ヒートマップ**
+- 売上・注文数の **時系列トレンド**
+
+などをブラウザ上から確認でき、仕込み量の調整やオペレーション改善に役立てることを想定しています。
+
+---
+
+## 主な機能
+
+- 📈 メニュー別の日次需要予測グラフ
+- 🗺 曜日 × 時間帯ごとの注文数ヒートマップ
+- 📊 期間を指定した売上・杯数の集計
+- 🔍 メニュー／日付レンジの絞り込み表示
+- 🧪 API・フロントエンドの自動テスト
+
+---
 
 ## 使用技術
-- Backend: FastAPI, SQLAlchemy, SQLite
-- Frontend: React (Vite, TypeScript), Recharts, Tailwind CSS
-- Infra / Deploy: Render (Backend), Vercel (Frontend)
-- Test: pytest, Playwright, Vitest
+
+- **Backend**
+  - FastAPI
+  - SQLAlchemy
+  - PostgreSQL（本番／Render）
+  - Alembic（マイグレーション）
+
+- **Frontend**
+  - React (Vite, TypeScript)
+  - Recharts（グラフ描画）
+  - Tailwind CSS
+
+- **Infra / Deploy**
+  - Render（Backend/API）
+  - Vercel（Frontend）
+
+- **Test**
+  - pytest（バックエンド）
+  - Playwright / Vitest（フロントエンド）
+
+---
 
 ## デモURL
+
 - **フロントエンド**: https://udon-app.vercel.app  
 - **バックエンド(API)**: https://udon-app.onrender.com  
-- **Swagger (APIドキュメント)**: https://udon-app.onrender.com/docs
-  
+- **Swagger (APIドキュメント)**: https://udon-app.onrender.com/docs  
 
+---
 
-## 起動方法（ローカル開発用）
+## 起動方法（ローカル開発）
 
-### Backend
+### 1. リポジトリのクローン
+
 ```bash
-cd backend
-uvicorn app.main:app --reload
-
-
-### Frontend
-cd frontend
-npm install
-npm run dev
-
-
-
-セットアップ手順
 git clone https://github.com/yourname/Udon_App.git
 cd Udon_App
