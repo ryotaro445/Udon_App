@@ -1,3 +1,8 @@
+import pytest
+pytest.skip("likes/comments 機能を削除したためスキップ", allow_module_level=True)
+
+
+
 def test_like_idempotent(client):
     mid = 1
     h = {"X-User-Token":"u1"}

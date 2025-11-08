@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Header, Response
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, asc, desc
 
@@ -29,21 +29,14 @@ def _to_int(v, default=0):
     except Exception:
         return default
 
-def _bool_from_payload(payload: Dict[str, Any]) -> Optional[bool]:
-    if "in_stock" in payload:
-        return bool(payload["in_stock"])
-    if "stock" in payload:
-        return _to_int(payload["stock"], 0) > 0
-    return None
-
 def _model_dict(m: Menu) -> Dict[str, Any]:
+    # 出力はスリム化（注文表示に必要な最小限）
     return {
         "id": m.id,
         "name": m.name,
         "price": m.price,
-        "stock": getattr(m, "stock", None),
-        "in_stock": getattr(m, "in_stock", None),
         "image": getattr(m, "image", None),
+        # stock / in_stock は使わない（分析用で残す場合は追加可）
     }
 
 # ---------- CRUD: /menus ----------
@@ -69,17 +62,12 @@ def create_menu(payload: Dict[str, Any], db: Session = Depends(get_db)):
 
     price = _to_int(payload.get("price"), 0)
     image = payload.get("image") or None
-    in_stock = _bool_from_payload(payload)
-    stock = payload.get("stock", None)
 
     m = Menu(name=name, price=price)
     if hasattr(m, "image"):
         m.image = image
-    if hasattr(m, "stock") and stock is not None:
-        m.stock = _to_int(stock, 0)
-    if hasattr(m, "in_stock") and in_stock is not None:
-        m.in_stock = bool(in_stock)
 
+    # スリム化：在庫系は受け付けない（無視）
     db.add(m)
     db.commit()
     db.refresh(m)
@@ -98,12 +86,7 @@ def update_menu(menu_id: int, payload: Dict[str, Any], db: Session = Depends(get
     if "image" in payload and hasattr(m, "image"):
         m.image = payload["image"] or None
 
-    if hasattr(m, "stock") and "stock" in payload:
-        m.stock = _to_int(payload["stock"], getattr(m, "stock", 0))
-    b = _bool_from_payload(payload)
-    if hasattr(m, "in_stock") and b is not None:
-        m.in_stock = bool(b)
-
+    # スリム化：在庫/in_stock は更新しない
     db.commit()
     db.refresh(m)
     return _model_dict(m)
@@ -122,6 +105,7 @@ def delete_menu(menu_id: int, db: Session = Depends(get_db)):
 def api_list_menus(db: Session = Depends(get_db)):
     rows = db.execute(select(Menu).order_by(asc(Menu.id))).scalars().all()
     return [_model_dict(m) for m in rows]
+
 @api_router.post("/menus", status_code=201)
 def api_create_menu(payload: Dict[str, Any], db: Session = Depends(get_db)):
     return create_menu(payload, db)

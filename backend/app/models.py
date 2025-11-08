@@ -12,30 +12,7 @@ class Menu(Base):
     price = Column(Integer, nullable=False)
     stock = Column(Integer, nullable=True)
 
-    comments = relationship("Comment", back_populates="menu", cascade="all, delete-orphan")
-    likes = relationship("MenuLike", back_populates="menu", cascade="all, delete-orphan")
-
-
-class Comment(Base):
-    __tablename__ = "comments"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    menu_id = Column(Integer, ForeignKey("menus.id"), nullable=False, index=True)
-    user = Column(String(255), nullable=True)
-    text = Column(String(2000), nullable=False)
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
-
-    menu = relationship("Menu", back_populates="comments")
-
-
-class MenuLike(Base):
-    __tablename__ = "menu_likes"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    menu_id = Column(Integer, ForeignKey("menus.id"), nullable=False, index=True)
-    user_token = Column(String(255), nullable=False)
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
-
-    menu = relationship("Menu", back_populates="likes")
-    __table_args__ = (UniqueConstraint("menu_id", "user_token", name="uq_menu_like"),)
+    
 
 
 class Order(Base):

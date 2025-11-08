@@ -9,6 +9,7 @@ from ..models import Order, OrderItem, Menu
 router = APIRouter(prefix="/orders", tags=["orders"])
 api_router = APIRouter(prefix="/api", tags=["orders"])
 
+# 状態遷移（注文＆提供のみ）
 VALID_TRANSITIONS = {
     "placed": {"cooking", "served"},
     "cooking": {"served"},
@@ -33,9 +34,9 @@ def list_order_ids(status: str, db: Session = Depends(get_db)):
     rows = db.execute(select(Order.id).where(Order.status == status)).all()
     ids = [r.id for r in rows]
 
-    # テスト・初期表示用のプレースホルダー
+    # 初期表示のための簡易プレースホルダ
     if not ids and status == "placed":
-        o = Order(status="placed", table_id=0, created_at=datetime.now(timezone.utc))  
+        o = Order(status="placed", table_id=0, created_at=datetime.now(timezone.utc))
         db.add(o)
         db.commit()
         ids = [o.id]
@@ -76,7 +77,7 @@ def api_create_order(payload: dict, db: Session = Depends(get_db)):
     """
     items = [{menu_id, qty|quantity}, ...]
     table_no (任意)
-    - 在庫チェック＆減算をトランザクション内で実施
+    - 在庫チェック・減算は行わない（スリム化）
     - OrderItem.price は Menu.price のスナップショット
     """
     items = payload.get("items") or []
@@ -84,7 +85,7 @@ def api_create_order(payload: dict, db: Session = Depends(get_db)):
     if not items:
         raise HTTPException(status_code=400, detail="empty items")
 
-    # 事前チェック
+    # 事前チェック（メニュー存在と数量のみ）
     for it in items:
         m = db.get(Menu, it["menu_id"])
         if not m:
@@ -92,11 +93,10 @@ def api_create_order(payload: dict, db: Session = Depends(get_db)):
         qty = int(it.get("qty") or it.get("quantity") or 0)
         if qty <= 0:
             raise HTTPException(status_code=400, detail="invalid qty")
-        if m.stock is not None and m.stock < qty:
-            raise HTTPException(status_code=400, detail="out of stock")
 
     try:
-        order = Order(status="created", table_id=table_no, created_at=datetime.now(timezone.utc))  # ★
+        # 重要：status は 'placed' に統一（遷移表と整合）
+        order = Order(status="placed", table_id=table_no, created_at=datetime.now(timezone.utc))
         db.add(order)
         db.flush()  # order.id
 
@@ -104,11 +104,6 @@ def api_create_order(payload: dict, db: Session = Depends(get_db)):
             m = db.get(Menu, it["menu_id"])
             qty = int(it.get("qty") or it.get("quantity"))
             db.add(OrderItem(order_id=order.id, menu_id=m.id, price=m.price, quantity=qty))
-            if m.stock is not None:
-                if m.stock < qty:
-                    raise HTTPException(status_code=400, detail="out of stock")
-                m.stock -= qty
-                db.add(m)
 
         db.commit()
         return {"id": order.id, "status": order.status}
@@ -124,7 +119,7 @@ def create_order(payload: dict, db: Session = Depends(get_db)):
     if not items:
         raise HTTPException(status_code=400, detail="empty items")
 
-    # 事前チェック
+    # 事前チェック（メニュー存在と数量のみ）
     for it in items:
         m = db.get(Menu, it["menu_id"])
         if not m:
@@ -132,24 +127,16 @@ def create_order(payload: dict, db: Session = Depends(get_db)):
         qty = int(it.get("quantity") or it.get("qty") or 0)
         if qty <= 0:
             raise HTTPException(status_code=400, detail="invalid qty")
-        if m.stock is not None and m.stock < qty:
-            raise HTTPException(status_code=400, detail="out of stock")
 
     try:
-        order = Order(status="placed", table_id=table_id, created_at=datetime.now(timezone.utc))  # ★
+        order = Order(status="placed", table_id=table_id, created_at=datetime.now(timezone.utc))
         db.add(order)
         db.flush()
 
-        # アイテム作成＋在庫減算
         for it in items:
             m = db.get(Menu, it["menu_id"])
             qty = int(it.get("quantity") or it.get("qty"))
             db.add(OrderItem(order_id=order.id, menu_id=m.id, price=m.price, quantity=qty))
-            if m.stock is not None:
-                if m.stock < qty:
-                    raise HTTPException(status_code=400, detail="out of stock")
-                m.stock -= qty
-                db.add(m)
 
         db.commit()
 
