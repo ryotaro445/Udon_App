@@ -4,7 +4,7 @@ import { http } from "./http";
 /** ===== 共通：スタッフトークン ===== */
 const STAFF_TOKEN = import.meta.env.VITE_STAFF_TOKEN;
 
-/** ===== 既存 ===== */
+/** ===== 集計系 ===== */
 export type SummaryOut = {
   range: "today" | "7d" | "30d";
   period_start: string;
@@ -34,7 +34,11 @@ export type MenuTotal = {
 };
 export type MenuDailyPoint = { date: string; orders: number; sales: number };
 export type MenuHourlyBucket = { hour: number; orders: number; amount: number };
-export type MenuHourlyOut = { menu_id: number; days: number; buckets: MenuHourlyBucket[] };
+export type MenuHourlyOut = {
+  menu_id: number;
+  days: number;
+  buckets: MenuHourlyBucket[];
+};
 
 /** ===== 需要予測 ===== */
 export type ForecastPoint = { date: string; y: number };

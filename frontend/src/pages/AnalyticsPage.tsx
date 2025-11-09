@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   fetchHourly,
   fetchDailySales,
+  fetchForecast,
   type HourlyBucket,
   type DailyPoint,
   type MenuTotal,
@@ -19,8 +20,8 @@ import { http } from "../api/http";
 type Tab = "daily" | "hourly" | "menu" | "forecast" | "heatmap";
 type MenuView = "daily" | "hourly";
 
-type ForecastPoint = {
-  menu_id: number;
+/** UI 用の予測行データ */
+type ForecastRow = {
   ds: string;
   yhat: number;
   yhat_lo: number;
@@ -70,7 +71,7 @@ export default function AnalyticsPage() {
   // forecast / heatmap
   const [forecastMenuId, setForecastMenuId] = useState<number | "all">("all");
   const [forecastDays, setForecastDays] = useState<number>(7);
-  const [forecast, setForecast] = useState<ForecastPoint[]>([]);
+  const [forecast, setForecast] = useState<ForecastRow[]>([]);
 
   const [hmMenuId, setHmMenuId] = useState<number | "all">("all");
   const today = useMemo(() => new Date(), []);
@@ -116,11 +117,20 @@ export default function AnalyticsPage() {
     setLoading(true);
     setErr(null);
     try {
-      const q = new URLSearchParams();
-      q.set("menu_id", String(forecastMenuId));
-      q.set("days", String(forecastDays));
-      const js = await http.get<unknown>(`/api/analytics/forecast?${q.toString()}`);
-      const rows: ForecastPoint[] = Array.isArray(js) ? (js as ForecastPoint[]) : ((js as any)?.data ?? []);
+      // staff token 付きで API を叩く
+      const out = await fetchForecast(forecastMenuId, forecastDays);
+      // out.data: [{ date, y }]
+      const rows: ForecastRow[] = (out.data || []).map((p) => {
+        const y = p.y ?? 0;
+        const lo = Math.round(y * 0.9);
+        const hi = Math.round(y * 1.1);
+        return {
+          ds: p.date,
+          yhat: y,
+          yhat_lo: lo,
+          yhat_hi: hi,
+        };
+      });
       setForecast(rows);
     } catch (e: any) {
       setErr(e?.message ?? "予測の取得に失敗しました");
@@ -144,7 +154,9 @@ export default function AnalyticsPage() {
       q.set("start", hmStart);
       q.set("end", hmEnd);
       const js = await http.get<unknown>(`/api/analytics/heatmap?${q.toString()}`);
-      const rows: HeatmapCell[] = Array.isArray(js) ? (js as HeatmapCell[]) : ((js as any)?.data ?? []);
+      const rows: HeatmapCell[] = Array.isArray(js)
+        ? (js as HeatmapCell[])
+        : ((js as any)?.data ?? []);
       setHeatmap(rows);
     } catch (e: any) {
       setErr(e?.message ?? "ヒートマップの取得に失敗しました");
@@ -306,7 +318,7 @@ export default function AnalyticsPage() {
       )}
 
       {tab === "hourly" && (
-        <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border bg_WHITE p-4 shadow-sm">
           {loading ? <div>読み込み中…</div> : <HourlySalesChart buckets={hourly} height={320} />}
         </div>
       )}
@@ -326,7 +338,7 @@ export default function AnalyticsPage() {
                 <button
                   className={`px-4 py-2 ${
                     menuView === "daily"
-                      ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
+                      ? "bg-gradient-to-b from-sky-600 to-sky-700 text_WHITE"
                       : "text-sky-700 hover:bg-sky-50"
                   }`}
                   onClick={() => setMenuView("daily")}
@@ -336,7 +348,7 @@ export default function AnalyticsPage() {
                 <button
                   className={`px-4 py-2 ${
                     menuView === "hourly"
-                      ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
+                      ? "bg-gradient-to-b from-sky-600 to-sky-700 text_WHITE"
                       : "text-sky-700 hover:bg-sky-50"
                   }`}
                   onClick={() => setMenuView("hourly")}
@@ -355,7 +367,7 @@ export default function AnalyticsPage() {
       )}
 
       {tab === "forecast" && (
-        <div className="rounded-2xl border bg-white p-4 shadow-sm space-y-3">
+        <div className="rounded-2xl border bg_WHITE p-4 shadow-sm space-y-3">
           <h2 className="font-semibold">7日予測</h2>
           {loading ? (
             <div>読み込み中…</div>
@@ -398,7 +410,7 @@ export default function AnalyticsPage() {
       )}
 
       {tab === "heatmap" && (
-        <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border bg_WHITE p-4 shadow-sm">
           {loading ? (
             <div>読み込み中…</div>
           ) : (
@@ -412,7 +424,7 @@ export default function AnalyticsPage() {
                 ))}
                 {hmMatrix.m.map((row, d) => (
                   <div className="contents" key={`row-${d}`}>
-                    <div className="text-xs font-medium text-gray-600 px-2 py-1 sticky left-0 bg-white">
+                    <div className="text-xs font-medium text-gray-600 px-2 py-1 sticky left-0 bg_WHITE">
                       {DOW_LABELS[d]}
                     </div>
                     {row.map((val, h) => {
