@@ -13,20 +13,18 @@ import DailySalesChart from "../components/DailySalesChart";
 import MenuTotalsChart from "../components/MenuTotalsChart";
 import MenuDailyChart from "../components/MenuDailyChart";
 import MenuHourlyChart from "../components/MenuHourlyChart";
+import ForecastLine from "../components/ForecastLine";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMode } from "../context/ModeCtx";
 import { http } from "../api/http";
+import type { ForecastPoint } from "@/types/analytics";
 
 type Tab = "daily" | "hourly" | "menu" | "forecast" | "heatmap";
 type MenuView = "daily" | "hourly";
 
-/** UI 用の予測行データ */
-type ForecastRow = {
-  ds: string;
-  yhat: number;
-  yhat_lo: number;
-  yhat_hi: number;
-};
+/** UI 用の予測行データ（ForecastLine と同じ形） */
+type ForecastRow = ForecastPoint;
+
 type HeatmapCell = { dow: number; hour: number; y: number };
 
 const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -318,7 +316,7 @@ export default function AnalyticsPage() {
       )}
 
       {tab === "hourly" && (
-        <div className="rounded-2xl border bg_WHITE p-4 shadow-sm">
+        <div className="rounded-2xl border bg-white p-4 shadow-sm">
           {loading ? <div>読み込み中…</div> : <HourlySalesChart buckets={hourly} height={320} />}
         </div>
       )}
@@ -338,7 +336,7 @@ export default function AnalyticsPage() {
                 <button
                   className={`px-4 py-2 ${
                     menuView === "daily"
-                      ? "bg-gradient-to-b from-sky-600 to-sky-700 text_WHITE"
+                      ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
                       : "text-sky-700 hover:bg-sky-50"
                   }`}
                   onClick={() => setMenuView("daily")}
@@ -348,7 +346,7 @@ export default function AnalyticsPage() {
                 <button
                   className={`px-4 py-2 ${
                     menuView === "hourly"
-                      ? "bg-gradient-to-b from-sky-600 to-sky-700 text_WHITE"
+                      ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
                       : "text-sky-700 hover:bg-sky-50"
                   }`}
                   onClick={() => setMenuView("hourly")}
@@ -367,55 +365,27 @@ export default function AnalyticsPage() {
       )}
 
       {tab === "forecast" && (
-        <div className="rounded-2xl border bg_WHITE p-4 shadow-sm space-y-3">
-          <h2 className="font-semibold">7日予測</h2>
+        <div className="rounded-2xl border bg-white p-4 shadow-sm space-y-3">
           {loading ? (
             <div>読み込み中…</div>
           ) : forecast.length === 0 ? (
             <div className="text-gray-500 text-sm">予測データがありません</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="overflow-x-auto border rounded-lg">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-2 py-1 text-left">ds</th>
-                      <th className="px-2 py-1 text-right">yhat</th>
-                      <th className="px-2 py-1 text-right">lo</th>
-                      <th className="px-2 py-1 text-right">hi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {forecast.map((r, i) => (
-                      <tr key={i} className="border-t">
-                        <td className="px-2 py-1">{r.ds}</td>
-                        <td className="px-2 py-1 text-right">{r.yhat.toFixed(1)}</td>
-                        <td className="px-2 py-1 text-right">{r.yhat_lo.toFixed(1)}</td>
-                        <td className="px-2 py-1 text-right">{r.yhat_hi.toFixed(1)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="text-xs text-gray-500">
-                折れ線に差し替える場合：
-                <code>
-                  {"forecast.map(r => ({ ds: r.ds, forecast: r.yhat, lo: r.yhat_lo, hi: r.yhat_hi }))"}
-                </code>
-              </div>
-            </div>
+            <ForecastLine title="7日間の売上予測" forecast={forecast} />
           )}
         </div>
       )}
 
       {tab === "heatmap" && (
-        <div className="rounded-2xl border bg_WHITE p-4 shadow-sm">
+        <div className="rounded-2xl border bg-white p-4 shadow-sm">
           {loading ? (
             <div>読み込み中…</div>
           ) : (
             <div className="overflow-x-auto">
-              <div className="inline-grid" style={{ gridTemplateColumns: `80px repeat(24, minmax(24px, 1fr))` }}>
+              <div
+                className="inline-grid"
+                style={{ gridTemplateColumns: `80px repeat(24, minmax(24px, 1fr))` }}
+              >
                 <div />
                 {Array.from({ length: 24 }).map((_, h) => (
                   <div key={h} className="text-[10px] text-gray-500 text-center px-1 py-0.5">
@@ -424,7 +394,7 @@ export default function AnalyticsPage() {
                 ))}
                 {hmMatrix.m.map((row, d) => (
                   <div className="contents" key={`row-${d}`}>
-                    <div className="text-xs font-medium text-gray-600 px-2 py-1 sticky left-0 bg_WHITE">
+                    <div className="text-xs font-medium text-gray-600 px-2 py-1 sticky left-0 bg-white">
                       {DOW_LABELS[d]}
                     </div>
                     {row.map((val, h) => {
