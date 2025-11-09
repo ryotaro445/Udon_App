@@ -4,32 +4,31 @@ import {
   fetchHourly,
   fetchDailySales,
   fetchForecast,
-  fetchMenuTotals,
   type HourlyBucket,
   type DailyPoint,
   type MenuTotal,
 } from "../api/analytics";
+import { fetchMenus, type MenuOut } from "../api/menus";
 import HourlySalesChart from "../components/HourlySalesChart";
 import DailySalesChart from "../components/DailySalesChart";
 import MenuTotalsChart from "../components/MenuTotalsChart";
 import MenuDailyChart from "../components/MenuDailyChart";
 import MenuHourlyChart from "../components/MenuHourlyChart";
-import ForecastLine from "../components/ForecastLine";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMode } from "../context/ModeCtx";
+import ForecastLine from "../components/analytics/ForecastLine";
 import { http } from "../api/http";
 
 type Tab = "daily" | "hourly" | "menu" | "forecast" | "heatmap";
 type MenuView = "daily" | "hourly";
 
-/** UI 用の予測行データ（折れ線用） */
+/** UI 用の予測行データ */
 type ForecastRow = {
   ds: string;
   yhat: number;
   yhat_lo: number;
   yhat_hi: number;
 };
-
 type HeatmapCell = { dow: number; hour: number; y: number };
 
 const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -48,7 +47,8 @@ export default function AnalyticsPage() {
   // tab from query
   const initialTab = (() => {
     const t = (sp.get("tab") || "").toLowerCase();
-    if (["daily", "hourly", "menu", "forecast", "heatmap"].includes(t)) return t as Tab;
+    if (["daily", "hourly", "menu", "forecast", "heatmap"].includes(t))
+      return t as Tab;
     return "daily";
   })();
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -71,32 +71,25 @@ export default function AnalyticsPage() {
   const [menuDays, setMenuDays] = useState<number>(14);
   const [menuHourlyDays, setMenuHourlyDays] = useState<number>(7);
 
-  // ===== 需要予測用 =====
-  const [forecastMenuId, setForecastMenuId] = useState<number | "all">("all");
-  const [forecastDays, setForecastDays] = useState<number>(7);
-  const [forecast, setForecast] = useState<ForecastRow[]>([]);
-  const [forecastMenus, setForecastMenus] = useState<MenuTotal[]>([]); // ドロップダウン表示用
-
-  // メニュー一覧（直近データ）を取得してドロップダウンに使う
+  // ---- メニュー一覧（かけうどん / カレーうどん ...） ----
+  const [menus, setMenus] = useState<MenuOut[]>([]);
   useEffect(() => {
+    // 一度だけ読み込めばOK
     (async () => {
       try {
-        const menus = await fetchMenuTotals(0, 100); // days=0 → 全期間, limit=100
-        setForecastMenus(menus);
+        const ms = await fetchMenus();
+        setMenus(ms);
       } catch {
-        // メニュー取得に失敗しても致命的ではないので握りつぶす
+        // 失敗しても致命的ではないので握りつぶし
       }
     })();
   }, []);
 
-  // 選択中メニューのラベル
-  const forecastMenuLabel = useMemo(() => {
-    if (forecastMenuId === "all") return "全メニュー";
-    const m = forecastMenus.find((m) => m.menu_id === forecastMenuId);
-    return m?.name ?? `Menu #${forecastMenuId}`;
-  }, [forecastMenuId, forecastMenus]);
+  // forecast / heatmap
+  const [forecastMenuId, setForecastMenuId] = useState<number | "all">("all");
+  const [forecastDays, setForecastDays] = useState<number>(7);
+  const [forecast, setForecast] = useState<ForecastRow[]>([]);
 
-  // ===== ヒートマップ用 =====
   const [hmMenuId, setHmMenuId] = useState<number | "all">("all");
   const today = useMemo(() => new Date(), []);
   const dateFmt = (d: Date) => {
@@ -111,7 +104,7 @@ export default function AnalyticsPage() {
   const [hmEnd, setHmEnd] = useState<string>(() => dateFmt(today));
   const [heatmap, setHeatmap] = useState<HeatmapCell[]>([]);
 
-  // ===== 日別／時間別の読み込み =====
+  // load daily/hourly
   const load = async () => {
     if (tab === "menu" || tab === "forecast" || tab === "heatmap") return;
     setLoading(true);
@@ -135,14 +128,13 @@ export default function AnalyticsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, days]);
 
-  // ===== 需要予測の読み込み =====
+  // ---- forecast ----
   const loadForecast = async () => {
     if (forecastMenuId == null || forecastDays == null) return;
     setLoading(true);
     setErr(null);
     try {
       const out = await fetchForecast(forecastMenuId, forecastDays);
-      // out.data: [{ date, y }]
       const rows: ForecastRow[] = (out.data || []).map((p) => {
         const y = p.y ?? 0;
         const lo = Math.round(y * 0.9);
@@ -166,7 +158,7 @@ export default function AnalyticsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, forecastMenuId, forecastDays]);
 
-  // ===== ヒートマップの読み込み =====
+  // ---- heatmap ----
   const loadHeatmap = async () => {
     if (!hmStart || !hmEnd) return;
     setLoading(true);
@@ -176,7 +168,9 @@ export default function AnalyticsPage() {
       q.set("menu_id", String(hmMenuId));
       q.set("start", hmStart);
       q.set("end", hmEnd);
-      const js = await http.get<unknown>(`/api/analytics/heatmap?${q.toString()}`);
+      const js = await http.get<unknown>(
+        `/api/analytics/heatmap?${q.toString()}`,
+      );
       const rows: HeatmapCell[] = Array.isArray(js)
         ? (js as HeatmapCell[])
         : ((js as any)?.data ?? []);
@@ -204,6 +198,12 @@ export default function AnalyticsPage() {
     }
     return { m, max };
   }, [heatmap]);
+
+  // ドロップダウンに出すメニュー名（All + DBのメニュー）
+  const menuOptions = useMemo(
+    () => menus.map((m) => ({ id: m.id, label: m.name })),
+    [menus],
+  );
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-4 [writing-mode:horizontal-tb]">
@@ -241,6 +241,7 @@ export default function AnalyticsPage() {
             </select>
           ) : tab === "forecast" ? (
             <div className="flex items-center gap-2">
+              {/* ← ここが “かけうどん / カレーうどん …” になる */}
               <select
                 className="border rounded-md px-2 py-2 border-sky-300"
                 value={forecastMenuId === "all" ? "all" : String(forecastMenuId)}
@@ -249,10 +250,10 @@ export default function AnalyticsPage() {
                   setForecastMenuId(v === "all" ? "all" : Number(v));
                 }}
               >
-                <option value="all">All</option>
-                {forecastMenus.map((m) => (
-                  <option key={m.menu_id} value={m.menu_id}>
-                    {m.name}
+                <option value="all">All（全メニュー）</option>
+                {menuOptions.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
                   </option>
                 ))}
               </select>
@@ -268,6 +269,7 @@ export default function AnalyticsPage() {
             </div>
           ) : tab === "heatmap" ? (
             <div className="flex items-center gap-2">
+              {/* ← ここもメニュー名表示 */}
               <select
                 className="border rounded-md px-2 py-2 border-sky-300"
                 value={hmMenuId === "all" ? "all" : String(hmMenuId)}
@@ -276,10 +278,12 @@ export default function AnalyticsPage() {
                   setHmMenuId(v === "all" ? "all" : Number(v));
                 }}
               >
-                <option value="all">All</option>
-                <option value="1">Menu #1</option>
-                <option value="2">Menu #2</option>
-                <option value="3">Menu #3</option>
+                <option value="all">All（全メニュー）</option>
+                {menuOptions.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
               </select>
               <input
                 type="date"
@@ -298,23 +302,25 @@ export default function AnalyticsPage() {
           ) : null}
 
           <div className="rounded-lg overflow-hidden border border-sky-700">
-            {(["daily", "hourly", "menu", "forecast", "heatmap"] as Tab[]).map((t) => (
-              <button
-                key={t}
-                className={`px-3 py-2 ${
-                  tab === t
-                    ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
-                    : "text-sky-700 hover:bg-sky-50"
-                }`}
-                onClick={() => setTab(t)}
-              >
-                {t === "daily" && "日別"}
-                {t === "hourly" && "時間別"}
-                {t === "menu" && "メニュー別"}
-                {t === "forecast" && "予測"}
-                {t === "heatmap" && "ヒートマップ"}
-              </button>
-            ))}
+            {(["daily", "hourly", "menu", "forecast", "heatmap"] as Tab[]).map(
+              (t) => (
+                <button
+                  key={t}
+                  className={`px-3 py-2 ${
+                    tab === t
+                      ? "bg-gradient-to-b from-sky-600 to-sky-700 text-white"
+                      : "text-sky-700 hover:bg-sky-50"
+                  }`}
+                  onClick={() => setTab(t)}
+                >
+                  {t === "daily" && "日別"}
+                  {t === "hourly" && "時間別"}
+                  {t === "menu" && "メニュー別"}
+                  {t === "forecast" && "予測"}
+                  {t === "heatmap" && "ヒートマップ"}
+                </button>
+              ),
+            )}
           </div>
 
           {(tab === "daily" || tab === "hourly") && (
@@ -337,14 +343,24 @@ export default function AnalyticsPage() {
       {/* 本体 */}
       {tab === "daily" && (
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
-          {loading ? <div>読み込み中…</div> : <DailySalesChart data={daily} height={320} />}
-          <div className="text-sm text-gray-500 mt-2">■ 売上金額（線）／ 注文件数（点線）</div>
+          {loading ? (
+            <div>読み込み中…</div>
+          ) : (
+            <DailySalesChart data={daily} height={320} />
+          )}
+          <div className="text-sm text-gray-500 mt-2">
+            ■ 売上金額（線）／ 注文件数（点線）
+          </div>
         </div>
       )}
 
       {tab === "hourly" && (
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
-          {loading ? <div>読み込み中…</div> : <HourlySalesChart buckets={hourly} height={320} />}
+          {loading ? (
+            <div>読み込み中…</div>
+          ) : (
+            <HourlySalesChart buckets={hourly} height={320} />
+          )}
         </div>
       )}
 
@@ -353,7 +369,8 @@ export default function AnalyticsPage() {
           <div className="rounded-2xl border bg-white p-4 shadow-sm">
             <MenuTotalsChart days={30} limit={50} onPickMenu={setPicked} />
             <div className="text-xs text-gray-500 mt-2">
-              棒をクリックすると下段に「{menuView === "daily" ? "日別" : "時間別"}」推移を表示
+              棒をクリックすると下段に「
+              {menuView === "daily" ? "日別" : "時間別"}」推移を表示
             </div>
           </div>
 
@@ -392,46 +409,22 @@ export default function AnalyticsPage() {
       )}
 
       {tab === "forecast" && (
-        <div className="rounded-2xl border bg-white p-4 shadow-sm space-y-4">
-          <h2 className="font-semibold">
-            {forecastMenuLabel} の {forecastDays}日間の売上予測
-          </h2>
+        <div className="rounded-2xl border bg-white p-4 shadow-sm space-y-3">
+          <h2 className="font-semibold">7日間の売上予測</h2>
           {loading ? (
             <div>読み込み中…</div>
           ) : forecast.length === 0 ? (
             <div className="text-gray-500 text-sm">予測データがありません</div>
           ) : (
-            <>
-              {/* 折れ線グラフ */}
-              <ForecastLine
-                title={`${forecastMenuLabel} の売上予測`}
-                forecast={forecast}
-              />
-
-              {/* テーブル表示も残す */}
-              <div className="overflow-x-auto border rounded-lg">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-2 py-1 text-left">ds</th>
-                      <th className="px-2 py-1 text-right">yhat</th>
-                      <th className="px-2 py-1 text-right">lo</th>
-                      <th className="px-2 py-1 text-right">hi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {forecast.map((r, i) => (
-                      <tr key={i} className="border-t">
-                        <td className="px-2 py-1">{r.ds}</td>
-                        <td className="px-2 py-1 text-right">{r.yhat.toFixed(1)}</td>
-                        <td className="px-2 py-1 text-right">{r.yhat_lo.toFixed(1)}</td>
-                        <td className="px-2 py-1 text-right">{r.yhat_hi.toFixed(1)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <ForecastLine
+              title="予測（売上金額）"
+              forecast={forecast.map((r) => ({
+                ds: r.ds,
+                yhat: r.yhat,
+                yhat_lo: r.yhat_lo,
+                yhat_hi: r.yhat_hi,
+              }))}
+            />
           )}
         </div>
       )}
@@ -444,11 +437,16 @@ export default function AnalyticsPage() {
             <div className="overflow-x-auto">
               <div
                 className="inline-grid"
-                style={{ gridTemplateColumns: `80px repeat(24, minmax(24px, 1fr))` }}
+                style={{
+                  gridTemplateColumns: `80px repeat(24, minmax(24px, 1fr))`,
+                }}
               >
                 <div />
                 {Array.from({ length: 24 }).map((_, h) => (
-                  <div key={h} className="text-[10px] text-gray-500 text-center px-1 py-0.5">
+                  <div
+                    key={h}
+                    className="text-[10px] text-gray-500 text-center px-1 py-0.5"
+                  >
                     {h}
                   </div>
                 ))}
@@ -459,7 +457,9 @@ export default function AnalyticsPage() {
                     </div>
                     {row.map((val, h) => {
                       const intensity = hmMatrix.max ? val / hmMatrix.max : 0;
-                      const bg = `rgba(30,144,255, ${0.15 + 0.7 * intensity})`;
+                      const bg = `rgba(30,144,255, ${
+                        0.15 + 0.7 * intensity
+                      })`;
                       return (
                         <div
                           key={`${d}-${h}`}
@@ -477,7 +477,11 @@ export default function AnalyticsPage() {
             </div>
           )}
           <div className="text-xs text-gray-500 mt-2">
-            {hmStart}〜{hmEnd} の合計数量（menu_id={String(hmMenuId)}）。
+            {hmStart}〜{hmEnd} の合計数量（
+            {hmMenuId === "all"
+              ? "全メニュー"
+              : `menu_id=${String(hmMenuId)}`}
+            ）。
           </div>
         </div>
       )}
