@@ -15,14 +15,14 @@ import type { ForecastPoint, ActualPoint } from "../../types/analytics";
 
 type Props = {
   title?: string;
-  forecast: ForecastPoint[];   // 7日先など未来を含む配列
-  actual?: ActualPoint[];      // 過去実績（任意）
+  forecast: ForecastPoint[];   // 7日先など未来を含む配列 { ds, yhat, yhat_lo, yhat_hi }
+  actual?: ActualPoint[];      // 過去実績（任意） { ds, y }
   dateFormat?: (ds: string) => string;
 };
 
 /**
- * 実績（実線）＋予測（破線）＋予測区間（薄いオレンジ帯）をまとめて表示。
- * forecast / actual は別配列で渡してOK。
+ * 実績（実線）＋予測（破線）＋
+ * 「上限〜下限のオレンジ帯」をまとめて表示。
  */
 export default function ForecastLine({
   title = "Forecast",
@@ -30,25 +30,30 @@ export default function ForecastLine({
   actual = [],
   dateFormat,
 }: Props) {
-  // ds（日付）で結合しつつ、帯用の band を追加:
-  // { ds, actual?, yhat, yhat_lo, yhat_hi, band }
+  /**
+   * ds（日付）で結合して 1 行にまとめつつ、
+   * 帯用の `band = yhat_hi - yhat_lo` も作る。
+   */
   const data = useMemo(() => {
     const byDs = new Map<string, any>();
 
     for (const f of forecast) {
-      const band = (f.yhat_hi ?? 0) - (f.yhat_lo ?? 0);
+      const lo = Number(f.yhat_lo ?? 0);
+      const hi = Number(f.yhat_hi ?? 0);
+      const band = hi - lo; // ← これがオレンジ帯の高さ
+
       byDs.set(f.ds, {
         ds: f.ds,
-        yhat: f.yhat,
-        yhat_lo: f.yhat_lo,
-        yhat_hi: f.yhat_hi,
+        yhat: Number(f.yhat ?? 0),
+        yhat_lo: lo,
+        yhat_hi: hi,
         band,
       });
     }
 
     for (const a of actual) {
       const row = byDs.get(a.ds) ?? { ds: a.ds };
-      row.actual = a.y;
+      row.actual = Number(a.y ?? 0);
       byDs.set(a.ds, row);
     }
 
@@ -84,8 +89,8 @@ export default function ForecastLine({
                       日付: {formatX(String(label))}
                     </div>
                     <div>上限：{p.yhat_hi?.toLocaleString?.() ?? p.yhat_hi}</div>
-                    <div>下限：{p.yhat_lo?.toLocaleString?.() ?? p.yhat_lo}</div>
                     <div>需要予測値：{p.yhat?.toLocaleString?.() ?? p.yhat}</div>
+                    <div>下限：{p.yhat_lo?.toLocaleString?.() ?? p.yhat_lo}</div>
                   </div>
                 );
               }}
@@ -93,17 +98,19 @@ export default function ForecastLine({
 
             <Legend />
 
-            {/* オレンジの帯（上限〜下限の範囲） */}
-            {/* yhat_lo を下側のベース、band(= 上限-下限) を積み上げて帯にする */}
+            {/* 1) 下限（yhat_lo） … 積み上げの“土台”にするだけ。凡例にも出さない */}
             <Area
               type="monotone"
               dataKey="yhat_lo"
               stackId="range"
               stroke="none"
               fillOpacity={0}
+              legendType="none"
               activeDot={false as any}
               isAnimationActive={false}
             />
+
+            {/* 2) band = 上限 − 下限 だけをオレンジで塗る → 上限〜下限の帯になる */}
             <Area
               type="monotone"
               dataKey="band"
@@ -116,7 +123,7 @@ export default function ForecastLine({
               isAnimationActive={false}
             />
 
-            {/* 需要予測値の折れ線（帯の中を走る） */}
+            {/* 3) 需要予測値の折れ線（帯の真ん中を通るはず） */}
             <Line
               type="monotone"
               dataKey="yhat"
@@ -127,7 +134,7 @@ export default function ForecastLine({
               connectNulls
             />
 
-            {/* 実績線（実線） */}
+            {/* 4) 実績線（任意） */}
             {data.some((d) => d.actual != null) && (
               <Line
                 type="monotone"
