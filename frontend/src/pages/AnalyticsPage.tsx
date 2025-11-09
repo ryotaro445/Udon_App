@@ -1,4 +1,5 @@
 // frontend/src/pages/AnalyticsPage.tsx
+// frontend/src/pages/AnalyticsPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   fetchHourly,
@@ -8,16 +9,17 @@ import {
   type DailyPoint,
   type MenuTotal,
 } from "../api/analytics";
-import { fetchMenus, type MenuOut } from "../api/menus";
+import { fetchMenus, type MenuOut } from "../api/menus"; 
 import HourlySalesChart from "../components/HourlySalesChart";
 import DailySalesChart from "../components/DailySalesChart";
 import MenuTotalsChart from "../components/MenuTotalsChart";
 import MenuDailyChart from "../components/MenuDailyChart";
 import MenuHourlyChart from "../components/MenuHourlyChart";
+import ForecastLine from "../components/analytics/ForecastLine";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMode } from "../context/ModeCtx";
-import ForecastLine from "../components/analytics/ForecastLine";
 import { http } from "../api/http";
+
 
 type Tab = "daily" | "hourly" | "menu" | "forecast" | "heatmap";
 type MenuView = "daily" | "hourly";
