@@ -11,18 +11,28 @@ import {
   Legend,
   Area,
 } from "recharts";
-import type { ForecastPoint, ActualPoint } from "../../types/analytics";
+
+export type ForecastPoint = {
+  ds: string;      // 日付 (ISO文字列)
+  yhat: number;   // 予測値
+  yhat_lo: number; // 下限
+  yhat_hi: number; // 上限
+};
+
+export type ActualPoint = {
+  ds: string;
+  y: number;
+};
 
 type Props = {
   title?: string;
-  forecast: ForecastPoint[];   // 7日先など未来を含む配列 { ds, yhat, yhat_lo, yhat_hi }
-  actual?: ActualPoint[];      // 過去実績（任意） { ds, y }
+  forecast: ForecastPoint[];   // 未来を含む予測配列
+  actual?: ActualPoint[];      // 任意：実績
   dateFormat?: (ds: string) => string;
 };
 
 /**
- * 実績（実線）＋予測（破線）＋
- * 「上限〜下限のオレンジ帯」をまとめて表示。
+ * 実績（実線）＋予測（破線）＋上限〜下限の帯（薄いオレンジ）をまとめて表示
  */
 export default function ForecastLine({
   title = "Forecast",
@@ -30,34 +40,24 @@ export default function ForecastLine({
   actual = [],
   dateFormat,
 }: Props) {
-  /**
-   * ds（日付）で結合して 1 行にまとめつつ、
-   * 帯用の `band = yhat_hi - yhat_lo` も作る。
-   */
+  // ds(日付)でマージ：{ ds, yhat, yhat_lo, yhat_hi, actual? }
   const data = useMemo(() => {
     const byDs = new Map<string, any>();
 
     for (const f of forecast) {
-      const lo = Number(f.yhat_lo ?? 0);
-      const hi = Number(f.yhat_hi ?? 0);
-      const band = hi - lo; // ← これがオレンジ帯の高さ
-
       byDs.set(f.ds, {
         ds: f.ds,
-        yhat: Number(f.yhat ?? 0),
-        yhat_lo: lo,
-        yhat_hi: hi,
-        band,
+        yhat: f.yhat,
+        yhat_lo: f.yhat_lo,
+        yhat_hi: f.yhat_hi,
       });
     }
-
     for (const a of actual) {
       const row = byDs.get(a.ds) ?? { ds: a.ds };
-      row.actual = Number(a.y ?? 0);
+      row.actual = a.y;
       byDs.set(a.ds, row);
     }
 
-    // 日付順にソート
     return Array.from(byDs.values()).sort((a, b) => a.ds.localeCompare(b.ds));
   }, [forecast, actual]);
 
@@ -68,7 +68,10 @@ export default function ForecastLine({
       <div className="mb-2 text-lg font-semibold">{title}</div>
       <div className="h-72 w-full">
         <ResponsiveContainer>
-          <LineChart data={data} margin={{ top: 12, right: 24, bottom: 8, left: 0 }}>
+          <LineChart
+            data={data}
+            margin={{ top: 12, right: 24, bottom: 8, left: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="ds"
@@ -78,52 +81,56 @@ export default function ForecastLine({
             />
             <YAxis width={56} style={{ fontSize: 12 }} />
 
-            {/* カスタムツールチップ：上限／下限／需要予測値 */}
             <Tooltip
-              content={({ label, payload }) => {
-                if (!payload || payload.length === 0) return null;
-                const p = payload[0].payload as any;
-                return (
-                  <div className="rounded-md border bg-white px-3 py-2 text-xs shadow">
-                    <div className="font-semibold mb-1">
-                      日付: {formatX(String(label))}
-                    </div>
-                    <div>上限：{p.yhat_hi?.toLocaleString?.() ?? p.yhat_hi}</div>
-                    <div>需要予測値：{p.yhat?.toLocaleString?.() ?? p.yhat}</div>
-                    <div>下限：{p.yhat_lo?.toLocaleString?.() ?? p.yhat_lo}</div>
-                  </div>
-                );
+              formatter={(raw: any, name: string) => {
+                const v =
+                  typeof raw === "number" ? Math.round(raw).toLocaleString() : raw;
+                if (name === "yhat_hi") return [v, "上限"];
+                if (name === "yhat") return [v, "需要予測値"];
+                if (name === "yhat_lo") return [v, "下限"];
+                return [v, name];
+              }}
+              labelFormatter={(l) => `日付: ${formatX(String(l))}`}
+              // 表示順: 上限 → 需要予測値 → 下限
+              itemSorter={(item: any) => {
+                const order: Record<string, number> = {
+                  yhat_hi: 0,
+                  yhat: 1,
+                  yhat_lo: 2,
+                };
+                return order[item.dataKey as string] ?? 99;
               }}
             />
 
             <Legend />
 
-            {/* 1) 下限（yhat_lo） … 積み上げの“土台”にするだけ。凡例にも出さない */}
+            {/* 下限〜上限の帯（stackId を使って差分だけオレンジにする） */}
+            {/* 1本目: 下限（透明・凡例非表示） */}
             <Area
               type="monotone"
               dataKey="yhat_lo"
-              stackId="range"
+              stackId="band"
               stroke="none"
-              fillOpacity={0}
+              fill="rgba(0,0,0,0)" // 完全透明
               legendType="none"
-              activeDot={false as any}
               isAnimationActive={false}
+              activeDot={false as any}
+              connectNulls
             />
-
-            {/* 2) band = 上限 − 下限 だけをオレンジで塗る → 上限〜下限の帯になる */}
+            {/* 2本目: 上限（下限との差分がオレンジで塗られる） */}
             <Area
               type="monotone"
-              dataKey="band"
-              stackId="range"
-              stroke="none"
-              fill="orange"
-              fillOpacity={0.25}
+              dataKey="yhat_hi"
+              stackId="band"
               name="上限〜下限の範囲"
-              activeDot={false as any}
+              stroke="none"
+              fill="rgba(249, 115, 22, 0.25)" // 薄いオレンジ
               isAnimationActive={false}
+              activeDot={false as any}
+              connectNulls
             />
 
-            {/* 3) 需要予測値の折れ線（帯の真ん中を通るはず） */}
+            {/* 需要予測値（破線） */}
             <Line
               type="monotone"
               dataKey="yhat"
@@ -134,7 +141,7 @@ export default function ForecastLine({
               connectNulls
             />
 
-            {/* 4) 実績線（任意） */}
+            {/* 実績線（ある場合のみ表示） */}
             {data.some((d) => d.actual != null) && (
               <Line
                 type="monotone"
