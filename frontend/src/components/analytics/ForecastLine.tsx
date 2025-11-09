@@ -12,7 +12,7 @@ import {
   Area,
 } from "recharts";
 
-// 予測ポイント & 実績ポイントの型（必要なら他の場所でも再利用してOK）
+// 予測ポイント & 実績ポイントの型
 export type ForecastPoint = {
   ds: string;
   yhat: number;
@@ -42,6 +42,7 @@ export default function ForecastLine({
   const data = useMemo(() => {
     const byDs = new Map<string, any>();
 
+    // 予測値をマージ
     for (const f of forecast) {
       byDs.set(f.ds, {
         ds: f.ds,
@@ -51,6 +52,7 @@ export default function ForecastLine({
       });
     }
 
+    // 実績値をマージ（あれば）
     for (const a of actual) {
       const row = byDs.get(a.ds) ?? { ds: a.ds };
       row.actual = a.y;
@@ -126,7 +128,7 @@ export default function ForecastLine({
             <Legend />
 
             {/* ---- 上限〜下限の帯（オレンジ） ---- */}
-            {/* 下限を土台として stackId=band で積み上げる */}
+            {/* 下限を土台として stackId="band" で積み上げる */}
             <Area
               type="monotone"
               dataKey="bandBase"
@@ -174,9 +176,6 @@ export default function ForecastLine({
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p className="mt-2 text-xs text-gray-500">
-        実績線は actual を渡したときのみ表示されます（未指定なら予測のみ）。
-      </p>
     </div>
   );
 }
