@@ -5,11 +5,8 @@ from fastapi.responses import Response
 
 # ルーター
 from app.routers import menus as menus_router
-
 from app.routers import orders as orders_router
-
 from app.routers import analytics as analytics_router
-from app.api.routes import forecast as forecast_router
 
 from app.database import Base, engine, SessionLocal
 from app.models import Menu, Order, OrderItem
@@ -41,6 +38,7 @@ API_NO_STORE_PREFIXES = (
     "/api/analytics",
 )
 
+
 @app.middleware("http")
 async def add_no_store_header(request: Request, call_next):
     resp: Response = await call_next(request)
@@ -48,24 +46,19 @@ async def add_no_store_header(request: Request, call_next):
         resp.headers.setdefault("Cache-Control", "no-store")
     return resp
 
+
 # --- ルーター登録 ---
 # メニュー
 app.include_router(menus_router.router)       # /menus/*
 app.include_router(menus_router.api_router)   # /api/menus/*
 
-
-
 # 注文
 app.include_router(orders_router.router)      # /orders/*
 app.include_router(orders_router.api_router)  # /api/orders/*
 
+# アナリティクス（売上・予測ふくむ）
+app.include_router(analytics_router.router)   # /api/analytics/*
 
-# 既存アナリティクス（任意モジュール）
-app.include_router(analytics_router.router)
-
-# 予測・ヒートマップ（テストが叩くのは /api/analytics/*）
-app.include_router(forecast_router.router)     # /forecasts/*
-app.include_router(forecast_router.analytics)  # /api/analytics/*
 
 def _bootstrap_seed() -> None:
     """テスト/ローカル起動時の最小シード。メニュー3件＋検証用の注文を1件。"""
@@ -101,9 +94,11 @@ def _bootstrap_seed() -> None:
     finally:
         db.close()
 
+
 @app.on_event("startup")
 def _startup():
     _bootstrap_seed()
+
 
 @app.get("/healthz")
 def healthz():

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Literal, List, Dict, Any
+from datetime import date  # 👈 追加
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -318,3 +319,139 @@ def menu_hourly(
         return {"menu_id": menu_id, "days": days, "buckets": buckets}
     except Exception:
         return {"menu_id": menu_id, "days": days, "buckets": []}
+
+
+# ===== ここから需要予測 =====
+
+@router.get("/forecast")
+def forecast(
+    menu_id: str = Query("all", description="メニューID または 'all'"),
+    days: int = Query(7, ge=1, le=31, description="何日先まで予測するか"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    需要予測：
+    - 過去の売上を日別に集計
+    - 曜日ごとの平均売上を求める
+    - それを使って未来 days 日分の売上金額を予測する
+    """
+
+    # 1) 日別売上を集計（orders.status = 'served' のみ対象）
+    base_sql = """
+        SELECT
+            DATE(o.created_at) AS d,
+            COALESCE(SUM(oi.quantity * m.price), 0) AS sales
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        JOIN menus m        ON m.id = oi.menu_id
+        WHERE o.status = 'served'
+    """
+
+    params: Dict[str, Any] = {}
+    if menu_id != "all":
+        # 数字以外が来た場合は空データ
+        if not menu_id.isdigit():
+            return {"menu_id": menu_id, "days": days, "data": []}
+        base_sql += " AND oi.menu_id = :menu_id"
+        params["menu_id"] = int(menu_id)
+
+    base_sql += """
+        GROUP BY DATE(o.created_at)
+        ORDER BY d ASC;
+    """
+
+    rows = db.execute(text(base_sql), params).fetchall()
+    if not rows:
+        return {"menu_id": menu_id, "days": days, "data": []}
+
+    # Python 側で日別データに整形
+    from datetime import timedelta
+
+    daily: List[tuple] = []
+    for r in rows:
+        d = r[0]      # date
+        sales = int(r[1] or 0)
+        daily.append((d, sales))
+
+    # 2) 曜日ごとの平均売上
+    weekday_values: Dict[int, List[int]] = {i: [] for i in range(7)}
+    for d, sales in daily:
+        weekday_values[d.weekday()].append(sales)
+
+    def avg(lst: List[int]) -> float:
+        return float(sum(lst)) / len(lst) if lst else 0.0
+
+    weekday_avg: Dict[int, float] = {w: avg(v) for w, v in weekday_values.items()}
+    global_avg: float = avg([s for _, s in daily])
+
+    # 3) 未来 days 日分を予測
+    last_date = daily[-1][0]
+    forecast_data: List[Dict[str, Any]] = []
+
+    for i in range(1, days + 1):
+        target_date = last_date + timedelta(days=i)
+        w = target_date.weekday()
+        base = weekday_avg.get(w) or global_avg or 0.0
+        forecast_data.append(
+            {
+                "date": target_date.isoformat(),
+                "y": int(round(base)),  # 予測売上金額
+            }
+        )
+
+    return {
+        "menu_id": menu_id,
+        "days": days,
+        "data": forecast_data,
+    }
+
+
+# ===== ヒートマップ =====
+
+@router.get("/heatmap")
+def heatmap(
+    menu_id: str = Query("all"),
+    start: date = Query(..., description="YYYY-MM-DD"),
+    end: date = Query(..., description="YYYY-MM-DD"),
+    db: Session = Depends(get_db),
+):
+    """
+    曜日×時間帯ヒートマップ用データ（PostgreSQL版）
+    - dow: 0=Sun ... 6=Sat
+    - hour: 0〜23
+    - y: 数量
+    """
+    params: Dict[str, object] = {"start": start, "end": end}
+    base_join = ""
+
+    if menu_id != "all":
+        base_join = " AND oi.menu_id = :menu_id"
+        params["menu_id"] = int(menu_id)
+
+    sql = text(
+        f"""
+        SELECT
+          EXTRACT(DOW FROM o.created_at AT TIME ZONE 'Asia/Tokyo')::int  AS dow,
+          EXTRACT(HOUR FROM o.created_at AT TIME ZONE 'Asia/Tokyo')::int AS hour,
+          SUM(oi.quantity) AS y
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        WHERE (o.created_at AT TIME ZONE 'Asia/Tokyo')::date
+              BETWEEN :start AND :end
+        {base_join}
+        GROUP BY 1, 2
+        ORDER BY 1, 2
+        """
+    )
+
+    rows = db.execute(sql, params).mappings().all()
+    data = [
+        {
+            "dow": int(r["dow"]),
+            "hour": int(r["hour"]),
+            "y": int(r["y"] or 0),
+        }
+        for r in rows
+    ]
+    # フロントが期待している形式
+    return {"data": data}
