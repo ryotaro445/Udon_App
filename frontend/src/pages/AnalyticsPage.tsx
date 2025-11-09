@@ -4,6 +4,7 @@ import {
   fetchHourly,
   fetchDailySales,
   fetchForecast,
+  fetchMenuTotals,
   type HourlyBucket,
   type DailyPoint,
   type MenuTotal,
@@ -17,13 +18,17 @@ import ForecastLine from "../components/ForecastLine";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMode } from "../context/ModeCtx";
 import { http } from "../api/http";
-import type { ForecastPoint } from "@/types/analytics";
 
 type Tab = "daily" | "hourly" | "menu" | "forecast" | "heatmap";
 type MenuView = "daily" | "hourly";
 
-/** UI 用の予測行データ（ForecastLine と同じ形） */
-type ForecastRow = ForecastPoint;
+/** UI 用の予測行データ（折れ線用） */
+type ForecastRow = {
+  ds: string;
+  yhat: number;
+  yhat_lo: number;
+  yhat_hi: number;
+};
 
 type HeatmapCell = { dow: number; hour: number; y: number };
 
@@ -66,11 +71,32 @@ export default function AnalyticsPage() {
   const [menuDays, setMenuDays] = useState<number>(14);
   const [menuHourlyDays, setMenuHourlyDays] = useState<number>(7);
 
-  // forecast / heatmap
+  // ===== 需要予測用 =====
   const [forecastMenuId, setForecastMenuId] = useState<number | "all">("all");
   const [forecastDays, setForecastDays] = useState<number>(7);
   const [forecast, setForecast] = useState<ForecastRow[]>([]);
+  const [forecastMenus, setForecastMenus] = useState<MenuTotal[]>([]); // ドロップダウン表示用
 
+  // メニュー一覧（直近データ）を取得してドロップダウンに使う
+  useEffect(() => {
+    (async () => {
+      try {
+        const menus = await fetchMenuTotals(0, 100); // days=0 → 全期間, limit=100
+        setForecastMenus(menus);
+      } catch {
+        // メニュー取得に失敗しても致命的ではないので握りつぶす
+      }
+    })();
+  }, []);
+
+  // 選択中メニューのラベル
+  const forecastMenuLabel = useMemo(() => {
+    if (forecastMenuId === "all") return "全メニュー";
+    const m = forecastMenus.find((m) => m.menu_id === forecastMenuId);
+    return m?.name ?? `Menu #${forecastMenuId}`;
+  }, [forecastMenuId, forecastMenus]);
+
+  // ===== ヒートマップ用 =====
   const [hmMenuId, setHmMenuId] = useState<number | "all">("all");
   const today = useMemo(() => new Date(), []);
   const dateFmt = (d: Date) => {
@@ -85,7 +111,7 @@ export default function AnalyticsPage() {
   const [hmEnd, setHmEnd] = useState<string>(() => dateFmt(today));
   const [heatmap, setHeatmap] = useState<HeatmapCell[]>([]);
 
-  // load daily/hourly
+  // ===== 日別／時間別の読み込み =====
   const load = async () => {
     if (tab === "menu" || tab === "forecast" || tab === "heatmap") return;
     setLoading(true);
@@ -109,13 +135,12 @@ export default function AnalyticsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, days]);
 
-  // forecast
+  // ===== 需要予測の読み込み =====
   const loadForecast = async () => {
     if (forecastMenuId == null || forecastDays == null) return;
     setLoading(true);
     setErr(null);
     try {
-      // staff token 付きで API を叩く
       const out = await fetchForecast(forecastMenuId, forecastDays);
       // out.data: [{ date, y }]
       const rows: ForecastRow[] = (out.data || []).map((p) => {
@@ -141,7 +166,7 @@ export default function AnalyticsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, forecastMenuId, forecastDays]);
 
-  // heatmap
+  // ===== ヒートマップの読み込み =====
   const loadHeatmap = async () => {
     if (!hmStart || !hmEnd) return;
     setLoading(true);
@@ -225,9 +250,11 @@ export default function AnalyticsPage() {
                 }}
               >
                 <option value="all">All</option>
-                <option value="1">Menu #1</option>
-                <option value="2">Menu #2</option>
-                <option value="3">Menu #3</option>
+                {forecastMenus.map((m) => (
+                  <option key={m.menu_id} value={m.menu_id}>
+                    {m.name}
+                  </option>
+                ))}
               </select>
               <select
                 className="border rounded-md px-2 py-2 border-sky-300"
@@ -365,13 +392,46 @@ export default function AnalyticsPage() {
       )}
 
       {tab === "forecast" && (
-        <div className="rounded-2xl border bg-white p-4 shadow-sm space-y-3">
+        <div className="rounded-2xl border bg-white p-4 shadow-sm space-y-4">
+          <h2 className="font-semibold">
+            {forecastMenuLabel} の {forecastDays}日間の売上予測
+          </h2>
           {loading ? (
             <div>読み込み中…</div>
           ) : forecast.length === 0 ? (
             <div className="text-gray-500 text-sm">予測データがありません</div>
           ) : (
-            <ForecastLine title="7日間の売上予測" forecast={forecast} />
+            <>
+              {/* 折れ線グラフ */}
+              <ForecastLine
+                title={`${forecastMenuLabel} の売上予測`}
+                forecast={forecast}
+              />
+
+              {/* テーブル表示も残す */}
+              <div className="overflow-x-auto border rounded-lg">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-2 py-1 text-left">ds</th>
+                      <th className="px-2 py-1 text-right">yhat</th>
+                      <th className="px-2 py-1 text-right">lo</th>
+                      <th className="px-2 py-1 text-right">hi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {forecast.map((r, i) => (
+                      <tr key={i} className="border-t">
+                        <td className="px-2 py-1">{r.ds}</td>
+                        <td className="px-2 py-1 text-right">{r.yhat.toFixed(1)}</td>
+                        <td className="px-2 py-1 text-right">{r.yhat_lo.toFixed(1)}</td>
+                        <td className="px-2 py-1 text-right">{r.yhat_hi.toFixed(1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
