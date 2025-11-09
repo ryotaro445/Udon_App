@@ -1,4 +1,3 @@
-// frontend/src/components/analytics/ForecastLine.tsx
 import { useMemo } from "react";
 import {
   ResponsiveContainer,
@@ -84,22 +83,26 @@ export default function ForecastLine({
             />
             <YAxis width={56} style={{ fontSize: 12 }} />
             <Tooltip
-              formatter={(v: any, name: string) => [
-                v,
-                name === "actual" ? "実績" : name,
-              ]}
+              formatter={(value: any, _name: string, item: any) => {
+                const key = item?.dataKey as string;
+                if (key === "yhat_hi") return [value, "上限"];
+                if (key === "yhat") return [value, "需要予測値"];
+                if (key === "yhat_lo") return [value, "下限"];
+                if (key === "actual") return [value, "実績"];
+                return [value, ""];
+              }}
               labelFormatter={(l) => `日付: ${formatX(String(l))}`}
             />
             <Legend />
 
-            {/* 予測区間（yhat_lo～yhat_hi）：薄いオレンジ色の帯 */}
+            {/* ==== 上限〜下限の帯（薄いオレンジ） ==== */}
             <Area
               type="monotone"
               dataKey="yhat_hi"
               dot={false}
               strokeOpacity={0}
-              fill="rgba(255, 165, 0, 0.25)" // オレンジの上側
-              name="上限〜下限の範囲"
+              fill="rgba(255, 165, 0, 0.25)" // オレンジ
+              name=""                         // 凡例には出さない
               isAnimationActive={false}
               activeDot={false as any}
               connectNulls
@@ -109,14 +112,27 @@ export default function ForecastLine({
               dataKey="yhat_lo"
               dot={false}
               strokeOpacity={0}
-              fill="rgba(255, 165, 0, 0.25)" // オレンジの下側（同じ色で塗りつぶす）
-              name="_band_bottom"
+              fill="rgba(255, 165, 0, 0.25)" // 同じ色で下側を塗る
+              name=""                         // 凡例には出さない
               isAnimationActive={false}
               activeDot={false as any}
               connectNulls
             />
 
-            {/* 予測線（破線） */}
+            {/* 上限用：線は描かず、凡例とツールチップ用にだけ存在させる */}
+            <Line
+              type="monotone"
+              dataKey="yhat_hi"
+              name="上限"
+              stroke="transparent"
+              strokeWidth={0}
+              dot={false}
+              activeDot={false as any}
+              legendType="line"
+              connectNulls
+            />
+
+            {/* 需要予測値（破線） */}
             <Line
               type="monotone"
               dataKey="yhat"
@@ -124,6 +140,19 @@ export default function ForecastLine({
               strokeDasharray="6 4"
               strokeWidth={2}
               dot={false}
+              connectNulls
+            />
+
+            {/* 下限用：線は描かず、凡例とツールチップ用にだけ存在させる */}
+            <Line
+              type="monotone"
+              dataKey="yhat_lo"
+              name="下限"
+              stroke="transparent"
+              strokeWidth={0}
+              dot={false}
+              activeDot={false as any}
+              legendType="line"
               connectNulls
             />
 
