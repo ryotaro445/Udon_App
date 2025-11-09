@@ -1,3 +1,4 @@
+// frontend/src/components/analytics/ForecastLine.tsx
 import { useMemo } from "react";
 import {
   ResponsiveContainer,
@@ -10,30 +11,18 @@ import {
   Legend,
   Area,
 } from "recharts";
-
-/** 需要予測の1点分 */
-export type ForecastPoint = {
-  ds: string;      // ISO 文字列の日付
-  yhat: number;    // 予測値
-  yhat_lo: number; // 下限
-  yhat_hi: number; // 上限
-};
-
-/** 実績データ 1点分（必要なときだけ使う） */
-export type ActualPoint = {
-  ds: string;
-  y: number;
-};
+import type { ForecastPoint, ActualPoint } from "../../types/analytics";
 
 type Props = {
   title?: string;
-  forecast: ForecastPoint[];   // 未来を含む予測配列
+  forecast: ForecastPoint[];   // 7日先など未来を含む配列
   actual?: ActualPoint[];      // 過去実績（任意）
   dateFormat?: (ds: string) => string;
 };
 
 /**
- * 実績（実線）＋予測（破線）＋予測区間（帯）をまとめて表示するコンポーネント
+ * 実績（実線）＋予測（破線）＋予測区間（薄いオレンジ帯）をまとめて表示。
+ * forecast / actual は別配列で渡してOK。
  */
 export default function ForecastLine({
   title = "Forecast",
@@ -41,16 +30,19 @@ export default function ForecastLine({
   actual = [],
   dateFormat,
 }: Props) {
-  // ds（日付）で結合：{ ds, actual?, yhat?, yhat_lo?, yhat_hi? }
+  // ds（日付）で結合しつつ、帯用の band を追加:
+  // { ds, actual?, yhat, yhat_lo, yhat_hi, band }
   const data = useMemo(() => {
     const byDs = new Map<string, any>();
 
     for (const f of forecast) {
+      const band = (f.yhat_hi ?? 0) - (f.yhat_lo ?? 0);
       byDs.set(f.ds, {
         ds: f.ds,
         yhat: f.yhat,
         yhat_lo: f.yhat_lo,
         yhat_hi: f.yhat_hi,
+        band,
       });
     }
 
@@ -60,10 +52,8 @@ export default function ForecastLine({
       byDs.set(a.ds, row);
     }
 
-    // X軸が時間順になるようソート
-    return Array.from(byDs.values()).sort((a, b) =>
-      String(a.ds).localeCompare(String(b.ds)),
-    );
+    // 日付順にソート
+    return Array.from(byDs.values()).sort((a, b) => a.ds.localeCompare(b.ds));
   }, [forecast, actual]);
 
   const formatX = (iso: string) => (dateFormat ? dateFormat(iso) : iso);
@@ -82,77 +72,58 @@ export default function ForecastLine({
               style={{ fontSize: 12 }}
             />
             <YAxis width={56} style={{ fontSize: 12 }} />
+
+            {/* カスタムツールチップ：上限／下限／需要予測値 */}
             <Tooltip
-              formatter={(value: any, _name: string, item: any) => {
-                const key = item?.dataKey as string;
-                if (key === "yhat_hi") return [value, "上限"];
-                if (key === "yhat") return [value, "需要予測値"];
-                if (key === "yhat_lo") return [value, "下限"];
-                if (key === "actual") return [value, "実績"];
-                return [value, ""];
+              content={({ label, payload }) => {
+                if (!payload || payload.length === 0) return null;
+                const p = payload[0].payload as any;
+                return (
+                  <div className="rounded-md border bg-white px-3 py-2 text-xs shadow">
+                    <div className="font-semibold mb-1">
+                      日付: {formatX(String(label))}
+                    </div>
+                    <div>上限：{p.yhat_hi?.toLocaleString?.() ?? p.yhat_hi}</div>
+                    <div>下限：{p.yhat_lo?.toLocaleString?.() ?? p.yhat_lo}</div>
+                    <div>需要予測値：{p.yhat?.toLocaleString?.() ?? p.yhat}</div>
+                  </div>
+                );
               }}
-              labelFormatter={(l) => `日付: ${formatX(String(l))}`}
             />
+
             <Legend />
 
-            {/* ==== 上限〜下限の帯（薄いオレンジ） ==== */}
-            <Area
-              type="monotone"
-              dataKey="yhat_hi"
-              dot={false}
-              strokeOpacity={0}
-              fill="rgba(255, 165, 0, 0.25)" // オレンジ
-              name=""                         // 凡例には出さない
-              isAnimationActive={false}
-              activeDot={false as any}
-              connectNulls
-            />
+            {/* オレンジの帯（上限〜下限の範囲） */}
+            {/* yhat_lo を下側のベース、band(= 上限-下限) を積み上げて帯にする */}
             <Area
               type="monotone"
               dataKey="yhat_lo"
-              dot={false}
-              strokeOpacity={0}
-              fill="rgba(255, 165, 0, 0.25)" // 同じ色で下側を塗る
-              name=""                         // 凡例には出さない
+              stackId="range"
+              stroke="none"
+              fillOpacity={0}
+              activeDot={false as any}
               isAnimationActive={false}
-              activeDot={false as any}
-              connectNulls
             />
-
-            {/* 上限用：線は描かず、凡例とツールチップ用にだけ存在させる */}
-            <Line
+            <Area
               type="monotone"
-              dataKey="yhat_hi"
-              name="上限"
-              stroke="transparent"
-              strokeWidth={0}
-              dot={false}
+              dataKey="band"
+              stackId="range"
+              stroke="none"
+              fill="orange"
+              fillOpacity={0.25}
+              name="上限〜下限の範囲"
               activeDot={false as any}
-              legendType="line"
-              connectNulls
+              isAnimationActive={false}
             />
 
-            {/* 需要予測値（破線） */}
+            {/* 需要予測値の折れ線（帯の中を走る） */}
             <Line
               type="monotone"
               dataKey="yhat"
               name="需要予測値"
-              strokeDasharray="6 4"
               strokeWidth={2}
+              strokeDasharray="6 4"
               dot={false}
-              connectNulls
-            />
-
-            {/* 下限用：線は描かず、凡例とツールチップ用にだけ存在させる */}
-            <Line
-              type="monotone"
-              dataKey="yhat_lo"
-              name="下限"
-              stroke="transparent"
-              strokeWidth={0}
-              dot={false}
-              activeDot={false as any}
-              legendType="line"
               connectNulls
             />
 
@@ -171,7 +142,7 @@ export default function ForecastLine({
         </ResponsiveContainer>
       </div>
       <p className="mt-2 text-xs text-gray-500">
-        実績線は <code>actual</code> を渡したときのみ表示されます（未指定なら予測のみ）。
+        実績線は actual を渡したときのみ表示されます（未指定なら予測のみ）。
       </p>
     </div>
   );
