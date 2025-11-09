@@ -146,7 +146,7 @@ export default function ForecastLine({
               dataKey="bandRange"
               stackId="band"
               stroke="none"
-              fill="rgba(249, 115, 22, 0.25)" // 薄いオレンジ帯
+              fill="rgba(249, 115, 22, 0.45)" // 濃いオレンジ帯
               name="上限〜下限の範囲"
               isAnimationActive={false}
               activeDot={false as any}
