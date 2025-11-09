@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import {
   ResponsiveContainer,
-  LineChart,
+  ComposedChart,
   Line,
   CartesianGrid,
   XAxis,
@@ -38,7 +38,7 @@ export default function ForecastLine({
   actual = [],
   dateFormat,
 }: Props) {
-  // ds（日付）で結合
+  // ds（日付）で結合しつつ、帯描画用の値も作る
   const data = useMemo(() => {
     const byDs = new Map<string, any>();
 
@@ -59,10 +59,19 @@ export default function ForecastLine({
       byDs.set(a.ds, row);
     }
 
+    // 下限〜上限の「帯」用に base + range を追加
+    const arr = Array.from(byDs.values()).map((row) => {
+      const lo = Number(row.yhat_lo ?? 0);
+      const hi = Number(row.yhat_hi ?? 0);
+      return {
+        ...row,
+        bandBase: lo,
+        bandRange: Math.max(hi - lo, 0), // マイナスにならないように
+      };
+    });
+
     // X軸が時間順になるようソート
-    return Array.from(byDs.values()).sort((a, b) =>
-      String(a.ds).localeCompare(String(b.ds))
-    );
+    return arr.sort((a, b) => String(a.ds).localeCompare(String(b.ds)));
   }, [forecast, actual]);
 
   const formatX = (iso: string) => (dateFormat ? dateFormat(iso) : iso);
@@ -72,7 +81,10 @@ export default function ForecastLine({
       <div className="mb-2 text-lg font-semibold">{title}</div>
       <div className="h-72 w-full">
         <ResponsiveContainer>
-          <LineChart data={data} margin={{ top: 12, right: 24, bottom: 8, left: 0 }}>
+          <ComposedChart
+            data={data}
+            margin={{ top: 12, right: 24, bottom: 8, left: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="ds"
@@ -119,20 +131,24 @@ export default function ForecastLine({
             <Legend />
 
             {/* ---- 上限〜下限の帯（オレンジ） ---- */}
-            {/* 先に「上限まで」をオレンジで塗る */}
+            {/* 下限を土台として stackId="band" で積み上げる */}
             <Area
               type="monotone"
-              dataKey="yhat_hi"
+              dataKey="bandBase"
+              stackId="band"
               stroke="none"
-              fill="rgba(249, 115, 22, 0.25)" // 薄いオレンジ帯
-              name="上限〜下限の範囲"
+              fill="transparent"
+              isAnimationActive={false}
               activeDot={false as any}
             />
             <Area
               type="monotone"
-              dataKey="yhat_lo"
+              dataKey="bandRange"
+              stackId="band"
               stroke="none"
-              fill="#ffffff"
+              fill="rgba(249, 115, 22, 0.25)" // 薄いオレンジ帯
+              name="上限〜下限の範囲"
+              isAnimationActive={false}
               activeDot={false as any}
             />
 
@@ -160,7 +176,7 @@ export default function ForecastLine({
                 connectNulls
               />
             )}
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
