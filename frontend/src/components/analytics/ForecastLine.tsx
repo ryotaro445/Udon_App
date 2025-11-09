@@ -74,6 +74,10 @@ export default function ForecastLine({
     return arr.sort((a, b) => String(a.ds).localeCompare(String(b.ds)));
   }, [forecast, actual]);
 
+
+  console.log("forecast[0]", forecast[0]);
+  console.log("data[0]", data[0]);
+
   const formatX = (iso: string) => (dateFormat ? dateFormat(iso) : iso);
 
   return (
