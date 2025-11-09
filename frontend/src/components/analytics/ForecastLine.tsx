@@ -38,7 +38,7 @@ export default function ForecastLine({
   actual = [],
   dateFormat,
 }: Props) {
-  // ds（日付）で結合しつつ、帯描画用の値も作る
+  // ds（日付）で結合
   const data = useMemo(() => {
     const byDs = new Map<string, any>();
 
@@ -59,24 +59,11 @@ export default function ForecastLine({
       byDs.set(a.ds, row);
     }
 
-    // 下限〜上限の「帯」用に base + range を追加
-    const arr = Array.from(byDs.values()).map((row) => {
-      const lo = Number(row.yhat_lo ?? 0);
-      const hi = Number(row.yhat_hi ?? 0);
-      return {
-        ...row,
-        bandBase: lo,
-        bandRange: Math.max(hi - lo, 0), // マイナスにならないように
-      };
-    });
-
     // X軸が時間順になるようソート
-    return arr.sort((a, b) => String(a.ds).localeCompare(String(b.ds)));
+    return Array.from(byDs.values()).sort((a, b) =>
+      String(a.ds).localeCompare(String(b.ds))
+    );
   }, [forecast, actual]);
-
-
-  console.log("forecast[0]", forecast[0]);
-  console.log("data[0]", data[0]);
 
   const formatX = (iso: string) => (dateFormat ? dateFormat(iso) : iso);
 
@@ -132,24 +119,20 @@ export default function ForecastLine({
             <Legend />
 
             {/* ---- 上限〜下限の帯（オレンジ） ---- */}
-            {/* 下限を土台として stackId="band" で積み上げる */}
+            {/* 先に「上限まで」をオレンジで塗る */}
             <Area
               type="monotone"
-              dataKey="bandBase"
-              stackId="band"
+              dataKey="yhat_hi"
               stroke="none"
-              fill="transparent"
-              isAnimationActive={false}
+              fill="rgba(249, 115, 22, 0.25)" // 薄いオレンジ帯
+              name="上限〜下限の範囲"
               activeDot={false as any}
             />
             <Area
               type="monotone"
-              dataKey="bandRange"
-              stackId="band"
+              dataKey="yhat_lo"
               stroke="none"
-              fill="rgba(249, 115, 22, 0.25)" // 薄いオレンジ帯
-              name="上限〜下限の範囲"
-              isAnimationActive={false}
+              fill="#ffffff"
               activeDot={false as any}
             />
 
