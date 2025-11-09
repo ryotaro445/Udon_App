@@ -1,3 +1,4 @@
+// frontend/src/components/analytics/ForecastLine.tsx
 import { useMemo } from "react";
 import {
   ResponsiveContainer,
@@ -11,36 +12,33 @@ import {
   Area,
 } from "recharts";
 
-type ForecastPoint = {
-  ds: string;      // 日付 (ISO 文字列)
-  yhat: number;    // 予測値
-  yhat_lo: number; // 下限
-  yhat_hi: number; // 上限
+// 予測ポイント & 実績ポイントの型（必要なら他の場所でも再利用してOK）
+export type ForecastPoint = {
+  ds: string;
+  yhat: number;
+  yhat_lo: number;
+  yhat_hi: number;
 };
 
-type ActualPoint = {
+export type ActualPoint = {
   ds: string;
   y: number;
 };
 
 type Props = {
   title?: string;
-  forecast: ForecastPoint[];   // 7日先など未来を含む配列
-  actual?: ActualPoint[];      // 過去実績（任意）
+  forecast: ForecastPoint[]; // 未来を含む予測配列
+  actual?: ActualPoint[]; // 過去実績（任意）
   dateFormat?: (ds: string) => string;
 };
 
-/**
- * 実績（実線）＋予測（破線）＋予測区間（薄いオレンジの帯）をまとめて表示。
- * 入力は別配列でもOK。日付キーで結合して1系列に整形します。
- */
 export default function ForecastLine({
   title = "Forecast",
   forecast,
   actual = [],
   dateFormat,
 }: Props) {
-  // ds（日付）で結合：{ ds, actual?, yhat?, yhat_lo?, yhat_hi?, bandSpan }
+  // ds（日付）で結合しつつ、帯描画用の値も作る
   const data = useMemo(() => {
     const byDs = new Map<string, any>();
 
@@ -59,15 +57,19 @@ export default function ForecastLine({
       byDs.set(a.ds, row);
     }
 
-    // 下限〜上限の幅（帯用）
-    for (const row of byDs.values()) {
+    // 下限〜上限の「帯」用に base + range を追加
+    const arr = Array.from(byDs.values()).map((row) => {
       const lo = Number(row.yhat_lo ?? 0);
       const hi = Number(row.yhat_hi ?? 0);
-      row.bandSpan = Math.max(hi - lo, 0);
-    }
+      return {
+        ...row,
+        bandBase: lo,
+        bandRange: Math.max(hi - lo, 0), // マイナスにならないように
+      };
+    });
 
     // X軸が時間順になるようソート
-    return Array.from(byDs.values()).sort((a, b) => a.ds.localeCompare(b.ds));
+    return arr.sort((a, b) => String(a.ds).localeCompare(String(b.ds)));
   }, [forecast, actual]);
 
   const formatX = (iso: string) => (dateFormat ? dateFormat(iso) : iso);
@@ -87,83 +89,84 @@ export default function ForecastLine({
             />
             <YAxis width={56} style={{ fontSize: 12 }} />
 
-            {/* カスタムツールチップ：日付 → 上限 → 需要予測値 → 下限 */}
+            {/* カスタムツールチップ： 日付 → 上限 → 需要予測値 → 下限 */}
             <Tooltip
-              content={({ active, payload, label }) => {
+              content={(props) => {
+                const { active, payload, label } = props;
                 if (!active || !payload || payload.length === 0) return null;
-                const row: any = payload[0].payload;
-                const hi = row.yhat_hi ?? row.yhat;
-                const lo = row.yhat_lo ?? row.yhat;
-                const mid = row.yhat ?? (hi + lo) / 2;
+                const row: any = payload[0].payload ?? {};
+                const hi = Number(row.yhat_hi ?? 0);
+                const lo = Number(row.yhat_lo ?? 0);
+                const mid = Number(row.yhat ?? 0);
 
-                const fmt = (n: number) => n.toLocaleString();
+                const nf = (v: number) => v.toLocaleString();
 
                 return (
-                  <div className="rounded-lg border bg-white px-3 py-2 text-xs shadow-md">
-                    <div className="font-semibold mb-1">
+                  <div
+                    style={{
+                      background: "rgba(255,255,255,0.95)",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      fontSize: 13,
+                      boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
                       日付: {formatX(String(label ?? row.ds))}
                     </div>
-                    <div>上限：{fmt(hi)}</div>
-                    <div>需要予測値：{fmt(mid)}</div>
-                    <div>下限：{fmt(lo)}</div>
+                    <div>上限：{nf(hi)}</div>
+                    <div>需要予測値：{nf(mid)}</div>
+                    <div>下限：{nf(lo)}</div>
                   </div>
                 );
               }}
             />
 
-            <Legend
-              formatter={(value) => {
-                if (value === "bandSpan") return "上限〜下限の範囲";
-                if (value === "yhat") return "需要予測値";
-                if (value === "actual") return "実績";
-                return value;
-              }}
-            />
+            <Legend />
 
-            {/* ───────── 帯（下限〜上限の範囲）───────── */}
-            {/* 1. 下限部分（透明） */}
+            {/* ---- 上限〜下限の帯（オレンジ） ---- */}
+            {/* 下限を土台として stackId=band で積み上げる */}
             <Area
               type="monotone"
-              dataKey="yhat_lo"
+              dataKey="bandBase"
               stackId="band"
               stroke="none"
               fill="transparent"
               isAnimationActive={false}
               activeDot={false as any}
-              name="__band_bottom" // Legendに出さないダミー
             />
-            {/* 2. 幅だけオレンジで塗る */}
             <Area
               type="monotone"
-              dataKey="bandSpan"
+              dataKey="bandRange"
               stackId="band"
               stroke="none"
-              fill="rgba(249, 115, 22, 0.25)" // 薄いオレンジ
+              fill="rgba(249, 115, 22, 0.25)" // 薄いオレンジ帯
+              name="上限〜下限の範囲"
               isAnimationActive={false}
               activeDot={false as any}
-              name="bandSpan"
             />
 
-            {/* 予測線（破線） */}
+            {/* 需要予測値（破線） */}
             <Line
               type="monotone"
               dataKey="yhat"
-              name="yhat"
+              name="需要予測値"
+              stroke="#2563eb"
               strokeWidth={2}
-              stroke="#2563eb" // 青
               strokeDasharray="6 4"
               dot={false}
               connectNulls
             />
 
-            {/* 実績線（実線） - 実績があるときだけ表示 */}
+            {/* 実績線（あれば表示） */}
             {data.some((d) => d.actual != null) && (
               <Line
                 type="monotone"
                 dataKey="actual"
-                name="actual"
+                name="実績"
+                stroke="#0f766e"
                 strokeWidth={2}
-                stroke="#111827"
                 dot={false}
                 connectNulls
               />
